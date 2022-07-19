@@ -1,0 +1,44 @@
+---
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source("series_report_api_data.R")
+```
+
+
+### Summary of Unique Series for Analysis
+
+```{r echo = FALSE, results= 'asis'}
+
+knitr::kable(priority_series, col.names = c("Species","Series Identifier", "Days between First and Last Isolate", "Number of Isolates"))
+
+
+```
+
+
+### Summary of Recurrences for Analysis
+
+```{r echo = FALSE, results='asis'}
+
+knitr::kable(recurrent, col.names=c("Species", "Series Identifier", "Days between First and Last Isolate", "Number of Isolates"))
+```
+
+### All Clusters
+
+```{r echo = FALSE, results='asis'}
+
+knitr::kable(clusters, col.names = c("Species", "Cluster Identifier", "Days between First and Last Isolate", "Number of Isolates"))
+```
+
+### Priority Isolates Not Yet Sequenced
+
+```{r echo = FALSE, results='asis'}
+
+knitr::kable(seq_remain, col.names = c("Sample", "Species", "Collection Date"))
+```
