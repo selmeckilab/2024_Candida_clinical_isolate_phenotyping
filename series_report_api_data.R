@@ -1,12 +1,28 @@
+## ---------------------------
+## Script name: series_report_api_data.R
+##
+## Purpose of script: Pull report CSVs directly from REDCap for filtering and subsetting
+##
+## Author: Nancy Scott
+##
+## Date Created: 2022-12-08
+##
+## Email: scot0854@umn.edu
+## ---------------------------
+## Notes:
+##   
+## ---------------------------
+## load packages
 library(tidyverse)
 library(lubridate)
 library(magrittr)
+library(writexl)
 
 # redcap report IDs
 avail_seq_data='40639'
 samples='41047'
 mic_results='41628'
-gdna_data <- ''
+chef_data <- '52263'
 
 # function to import report from redcap
 import_report <- function(report_number) {
@@ -29,6 +45,18 @@ import_report <- function(report_number) {
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat')))
+
+# CHEF gel results
+chef_done <- import_report(chef_data) %>%
+    filter(redcap_repeat_instrument != "NA")
+
+# Missing CHEF results
+todo <- sample_info %>%
+    left_join(chef_done, by="mec_id") %>%
+    filter(is.na(redcap_repeat_instrument))
+
+# export chef-todo
+write_xlsx(todo,paste0(Sys.Date(),"_CHEF_todo.xlsx"))
 
 # MSI location if sequencing data exists
 seq_info <- import_report(avail_seq_data) %>%
