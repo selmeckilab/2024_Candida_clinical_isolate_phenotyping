@@ -10,7 +10,6 @@
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
-##   
 ## ---------------------------
 ## load packages
 library(tidyverse)
@@ -26,7 +25,7 @@ chef_data <- '52263'
 
 # function to import report from redcap
 import_report <- function(report_number) {
-  token <- "E3E92979DCC9C27377EA8CB3580F5E15"
+  token <- ""
   url <- "https://redcap.ahc.umn.edu/api/"
   formData <- list("token"=token,
                    content='report',
