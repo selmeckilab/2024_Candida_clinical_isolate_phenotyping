@@ -18,9 +18,9 @@ library(magrittr)
 library(writexl)
 
 # redcap report IDs
-avail_seq_data='40639'
-samples='41047'
-mic_results='41628'
+avail_seq_data <- '52998'
+samples <- '41047'
+mic_results <- '41628'
 chef_data <- '52263'
 
 # function to import report from redcap
@@ -51,7 +51,7 @@ chef_done <- import_report(chef_data) %>%
 
 # Missing CHEF results
 todo <- sample_info %>%
-    left_join(chef_done, by="mec_id") %>%
+    left_join(chef_done, by="primary_id") %>%
     filter(is.na(redcap_repeat_instrument))
 
 # export chef-todo
@@ -60,19 +60,21 @@ write_xlsx(todo,paste0(Sys.Date(),"_CHEF_todo.xlsx"))
 # MSI location if sequencing data exists
 seq_info <- import_report(avail_seq_data) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(mec_id, msi_path_r1, msi_path_r2)
+    select(primary_id, redcap_repeat_instance, msi_path_r1, msi_path_r2, msi_nanopore_path) %>%
+    pivot_wider(names_from = "redcap_repeat_instance",
+                values_from = c("msi_path_r1", "msi_path_r2", "msi_nanopore_path"))
 
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(mec_id, redcap_repeat_instance, drug, start_date, mic50, smg) %>%
+    select(primary_id, redcap_repeat_instance, drug, start_date, mic50, smg) %>%
     pivot_wider(names_from = "redcap_repeat_instance", 
                 values_from = c("drug","start_date","mic50","smg"))
 
 # all_data_merged
-all_samples <- full_join(sample_info, seq_info) %>%
-    full_join(mic_info) %>%
-    filter(mec_id != "MEC103") #exclude one known mixed culture; we have 103-1 and 103-2
+all_samples <- left_join(sample_info, seq_info) %>%
+    left_join(mic_info) %>%
+    filter(primary_id != "MEC103")
 
 all_samples$cluster_id <- as.factor(all_samples$cluster_id)
 all_samples$series_id <- as.factor(all_samples$series_id)
@@ -94,7 +96,7 @@ serial_timespans <- serial_timespans %>%
     inner_join(count_serial_samples, by = 'series_id')
     
 serial_calculations <- serial_timespans %>%
-    select(mec_id, series_id, series_span, series_count) 
+    select(primary_id, series_id, series_span, series_count) 
 
 cluster_timespans <- all_samples %>%
     filter(cluster_id != "NA") %>%
@@ -109,77 +111,56 @@ cluster_timespans <- cluster_timespans %>%
     inner_join(cluster_count, by="cluster_id")
 
 cluster_calcs <- cluster_timespans %>%
-    select(mec_id, cluster_id, cluster_span, cluster_count)
+    select(primary_id, cluster_id, cluster_span, cluster_count)
 
 all_samples <- all_samples %>%
-    left_join(serial_calculations, by = c("mec_id", "series_id")) %>%
-    left_join(cluster_calcs, by = c("mec_id", "cluster_id")) %T>%
-    write.csv("clin_isolate_data.csv")
+    full_join(serial_calculations, by = c("primary_id", "series_id")) %>%
+    full_join(cluster_calcs, by = c("primary_id", "cluster_id")) 
 
 # priorities: rare isolates, longer than one day, recurrent or clusters
 priority_series <- all_samples %>%
     filter(series_id !="NA") %>%
-    #filter(genus %in% c("Candida krusei (Pichia kudriavzevii)",
+    #filter(genus_species %in% c("Candida krusei (Pichia kudriavzevii)",
      #                   "Clavispora (Candida) lusitaniae",
       #                  "Candida utilis (Cyberlindnera jadinii)",
        #                 "Candida kefyr (Kluyveromyces marxianus)") |
-    filter(series_span > 3, series_span < 30, series_count >2) %>%
+    filter(series_span > 1, series_span < 30, series_count >2) %>%
     group_by(series_id) %>%
-    slice(n=2) %>%
+    slice(2L) %>%
     ungroup() %>%
-    select(genus, series_id, series_span, series_count) %>%
-    arrange(genus, desc(series_span))
+    select(genus_species, series_id, series_span, series_count) %>%
+    arrange(genus_species, desc(series_span))
 
 recurrent <- all_samples %>%
     filter(series_id != "NA" & series_span >30) %>%
     group_by(series_id) %>%
-    slice_head(n=1) %>%
+    slice(2L) %>%
     ungroup() %>%
-    select(genus, series_id, series_span, series_count) %>%
-    arrange(genus, desc(series_span))
+    select(genus_species, series_id, series_span, series_count) %>%
+    arrange(genus_species, desc(series_span))
 
 # cluster info
 clusters <- all_samples %>%
     filter(cluster_id != "NA") %>%
     group_by(cluster_id) %>%
-    slice_head(n=1) %>%
+    slice(1L) %>%
     ungroup %>%
-    select(genus, cluster_id, cluster_span, cluster_count) %>%
-    arrange(genus, desc(cluster_span))
+    select(genus_species, cluster_id, cluster_span, cluster_count) %>%
+    arrange(genus_species, desc(cluster_span))
 
-# remaining sequencing
-series_to_do <- serial_timespans %>%
-    filter(genus %in% c("Candida krusei (Pichia kudriavzevii)",
-                        "Clavispora (Candida) lusitaniae",
-                        "Candida utilis (Cyberlindnera jadinii)",
-                        "Candida kefyr (Kluyveromyces marxianus)") |
-               (series_span > 3) & is.na(msi_path_r1)) %>%
-    ungroup() %>%
-    select(mec_id)
-
-glab_to_do <- all_samples %>%
-    filter(genus=="Candida glabrata" & is.na(msi_path_r1)) %>%
-    select(mec_id)
-
-to_do <- series_to_do %>%
-    full_join(series_to_do) %>%
-    full_join(glab_to_do) %>%
-    pull(mec_id)
-
-seq_remain <- all_samples %>%
-    filter(mec_id %in% to_do & is.na(msi_path_r1)) %>%
-    select(mec_id, genus, collection_date) %T>%
-    write.csv("to_sequences.csv")
 
 ## little plot of samples by species
 species_count <- all_samples %>%
-    group_by(genus) %>%
+    group_by(genus_species) %>%
     summarize(species_count=n()) %>%
     arrange(desc(species_count))
 
-sp_plot <- ggplot(species_count, aes(x=genus, y=species_count)) +
-    geom_col() +
-    scale_x_discrete(limits=species_count$genus,
+species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
+                     "#882255","#BBBBBB", "#AA4499", "#DDCC77", "black")
+
+sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
+    geom_col(fill=species_colors) +
+    scale_x_discrete(limits=species_count$genus_species,
                      labels = c("C. albicans", 
                                 "C. glabrata",
                                 "C. parapsilosis",
@@ -198,10 +179,11 @@ sp_plot <- ggplot(species_count, aes(x=genus, y=species_count)) +
                                      hjust = 1, 
                                      vjust = 1,
                                      color = "black",
-                                     size = 14)) +
+                                     size = 14,
+                                     face = "italic")) +
     theme(axis.title = element_text(color = "black", size = 16))
 
-ggsave("species_plot.svg", sp_plot, width = 7, height = 4, units = "in")
+ggsave("images/2022_Candida_MEC_spp_distribution.tiff", sp_plot, width = 7, height = 4, units = "in")
 
 # export all data to csv
 all_samples %>% write.csv("redcap_all_samples.csv")
@@ -209,53 +191,59 @@ all_samples %>% write.csv("redcap_all_samples.csv")
 # count number of patients per spp.
 
 inds <- all_samples %>%
-    group_by(genus) %>%
+    group_by(genus_species) %>%
     count(series_id) %>%
     mutate(total=sum(n))
 
 # create vectors for venn diagram of cluster-series-na pts.
 
 neither <- all_samples %>%
-    filter(is.na(series_id) & is.na(cluster_id) & genus == "Candida albicans") %>%
-    pull(mec_id)
+    filter(is.na(series_id) & is.na(cluster_id) & genus_species == "Candida albicans") %>%
+    pull(primary_id)
 
 series <- all_samples %>%
-    filter(series_id != "NA" & is.na(cluster_id) & genus == "Candida albicans") %>%
-    pull(mec_id)
+    filter(series_id != "NA" & is.na(cluster_id) & genus_species == "Candida albicans") %>%
+    pull(primary_id)
 
 cluster <- all_samples %>%
-    filter(is.na(series_id) & cluster_id != "NA" & genus == "Candida albicans") %>%
-    pull(mec_id)
+    filter(is.na(series_id) & cluster_id != "NA" & genus_species == "Candida albicans") %>%
+    pull(primary_id)
 
 both <- all_samples %>%
-    filter(series_id != "NA" & cluster_id != "NA" & genus == "Candida albicans") %>%
-    pull(mec_id)
+    filter(series_id != "NA" & cluster_id != "NA" & genus_species == "Candida albicans") %>%
+    pull(primary_id)
 
 overlaps <- all_samples %>%
     mutate(series_sample = (series_id != "NA" & is.na(cluster_id))) %>%
     mutate(cluster_sample = (cluster_id != "NA" & is.na(series_id))) %>%
     mutate(both_sample = (cluster_id != "NA" & series_id != "NA")) %>%
     mutate(neither_sample = is.na(cluster_id) & is.na(series_id)) %>%
-    select(mec_id, genus, series_id, cluster_id, series_sample, cluster_sample, both_sample, neither_sample) #%>%
-    #replace_na(list(series_sample=FALSE, cluster_sample=FALSE, both_sample=FALSE, neither_sample=FALSE))
+    select(primary_id, genus_species, series_id, cluster_id, series_sample, cluster_sample, both_sample, neither_sample) %>%
+    replace_na(list(series_sample=FALSE, cluster_sample=FALSE, both_sample=FALSE, neither_sample=FALSE))
 
-# god-awful effort to get stacked bar plot per spp. of cluster and series set operations
-try_again <- overlaps %>%
-group_by(genus) %>%
-    summarize(neither_sum=sum(neither_sample), both_sum=sum(both_sample),
-              cluster_sum=sum(cluster_sample),series_sum=sum(series_sample))
-              #total=sum(series_sample, cluster_sample, both_sample, neither_sample))
+# generate stacked bar plot per spp. of cluster and series sets
+summary_overlaps <- overlaps %>%
+    group_by(genus_species) %>%
+    summarize(neither_sum=sum(neither_sample==TRUE), both_sum=sum(both_sample==TRUE),
+              cluster_sum=sum(cluster_sample==TRUE),series_sum=sum(series_sample==TRUE))
+              #total=sum(series_sum, cluster_sum, both_sum, neither_sum))
+
 library(reshape2)
-library(viridis)
-library(RColorBrewer)
 
-another_try <- melt(try_again, id.var="genus")
-ggplot(another_try, aes(x=genus, y=value, fill=variable)) + 
+reshape_overlaps <- melt(summary_overlaps, id.var="genus_species")
+viz_overlaps <- ggplot(reshape_overlaps, aes(x=genus_species, y=value, fill=variable)) + 
     geom_bar(stat="identity") +
-    scale_fill_viridis(discrete=TRUE, option = "D")
+    scale_fill_manual(values = c("#EECC66", "#EE99AA", "#6699CC", "#004488"),
+                      labels = c("One-off isolates", "Cluster and series", "Cluster isolate", "Series isolate")) +
+    xlab("Species") +
+    ylab("Count") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 30, 
+                                     hjust = 1, 
+                                     vjust = 1,
+                                     color = "black",
+                                     size = 10,
+                                     face = "italic")) +
+    theme(axis.title = element_text(color = "black", size = 16))
     
-ggplot(overlaps, aes(interaction(series_sample, cluster_sample), 
-                     fill=series_id)) + 
-    geom_bar() + facet_grid(. ~ genus) #+
-    #scale_fill_viridis(discrete = TRUE)
-
+ggsave("images/2022_Candida_patient_categories.tiff", viz_overlaps, width = 11.5, height = 8, units = "in")
