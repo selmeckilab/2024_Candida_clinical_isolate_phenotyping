@@ -22,6 +22,8 @@ avail_seq_data <- '52998'
 samples <- '41047'
 mic_results <- '41628'
 chef_data <- '52263'
+spot_plates <- '56394'
+genes <- '56393'
 
 # function to import report from redcap
 import_report <- function(report_number) {
@@ -45,12 +47,23 @@ import_report <- function(report_number) {
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat')))
 
+# snp data
+gene_vars <- import_report(genes) %>%
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq)  %>%
+    pivot_wider(names_from = "redcap_repeat_instance",
+                values_from = c("gene", "protein_change", "alt_freq"))
+
 # CHEF gel results
 chef_done <- import_report(chef_data) %>%
-    filter(redcap_repeat_instrument != "NA")
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, gel_date, blot_prepared) %>%
+    pivot_wider(names_from = "redcap_repeat_instance",
+                values_from = c("gel_date", "blot_prepared"))
 
 # Missing CHEF results
 todo <- sample_info %>%
+    filter(isolate_type == "clinical") %>%
     left_join(chef_done, by="primary_id") %>%
     filter(is.na(redcap_repeat_instrument))
 
@@ -72,9 +85,12 @@ mic_info <- import_report(mic_results) %>%
                 values_from = c("drug","start_date","mic50","smg"))
 
 # all_data_merged
-all_samples <- left_join(sample_info, seq_info) %>%
+all_samples <- left_join(sample_info, gene_vars) %>%
     left_join(mic_info) %>%
-    filter(primary_id != "MEC103")
+    left_join(chef_done) %>%
+    filter(primary_id != "MEC103") 
+
+write_xlsx(all_samples,paste0(Sys.Date(),"merged_Candida_data.xlsx"))
 
 all_samples$cluster_id <- as.factor(all_samples$cluster_id)
 all_samples$series_id <- as.factor(all_samples$series_id)

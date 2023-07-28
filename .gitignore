@@ -5,5 +5,7 @@
 *.html
 *.pdf
 *.docx
+*.csv
+*.xlsx
 data
 images
