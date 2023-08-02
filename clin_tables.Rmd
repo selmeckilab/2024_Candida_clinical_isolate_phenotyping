@@ -36,9 +36,3 @@ knitr::kable(recurrent, col.names=c("Species", "Series Identifier", "Days betwee
 knitr::kable(clusters, col.names = c("Species", "Cluster Identifier", "Days between First and Last Isolate", "Number of Isolates"))
 ```
 
-### Priority Isolates Not Yet Sequenced
-
-```{r echo = FALSE, results='asis'}
-
-knitr::kable(seq_remain, col.names = c("Sample", "Species", "Collection Date"))
-```
