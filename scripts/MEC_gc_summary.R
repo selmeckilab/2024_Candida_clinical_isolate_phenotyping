@@ -23,16 +23,15 @@ library(digest)
 library(jsonlite)
 library(ggplot2)
 library(gtools)
-library(ggpubr)
-library(ggthemes)
-library(patchwork)
+library(paletteer)
 ################################################################################
 ## Get spreadsheet cleaning and gc metric functions
-source("gc_functions.R")
+source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
 plate_reader_file <- "data/growth_curve/2023-07-19_MEC_GC30.xlsx"
 gc_date <- "2023-07-19"
+facet_colors <- c(paletteer_d("ggthemes::Tableau_10"), paletteer_d("ggsci::category20c_d3"))
 
 api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
@@ -40,21 +39,21 @@ api_url <-  "https://redcap.ahc.umn.edu/api/"
 ################################################################################
 ## Read in plate, get sample metadata and check fit of logistic curve
 
-plate_od <- clean_growthcurver(plate_reader_file) #%>%
-    #filter(time < 23.48) # make sure all plates are same time span
+plate_od <- clean_growthcurver(plate_reader_file) %>%
+    filter(time <=48) # make sure all plates are same time span
 
 samples <- samples(plate_reader_file)
 
 plate_data <- SummarizeGrowthByPlate(plate_od)
-colnames(plate_data)[colnames(plate_data)=="sample"] <- 'well'
 
+colnames(plate_data)[colnames(plate_data)=="sample"] <- 'well'
 
 ###############################################################################
 # tidy, add metadata and summarize values
 plate_summary <- plate_data %>%
     inner_join(samples, by = "well") %>%
     group_by(primary_id) %>%
-    filter(!primary_id %in% c("water", "blank", "NA", "ypad")) %>%
+    filter(!toupper(primary_id) %in% toupper(c("water", "blank", "NA", "ypad"))) %>%
     summarize(mean_k = round(mean(k), digits = 3), 
               mean_n0 = round(mean(n0), digits = 3),
               mean_r = round(mean(r), digits = 3),
@@ -74,12 +73,12 @@ redcap_temp <- case_when(samples$temp[1]== 30 ~ 0,
 
 redcap_reader <- 0 # serial number 1803065
 
-for(i in 2:length(plate_summary$primary_id)){
+for(i in 1:length(plate_summary$primary_id)){
     
     record <- c(
         primary_id = plate_summary$primary_id[i],
         redcap_repeat_instrument = "growth_curve_data",
-        redcap_repeat_instance = "new",
+        redcap_repeat_instance = "1",
         gc_date = gc_date,
         gc_time = round(max(plate_od$time), digits = 2),
         gc_temp = redcap_temp,
@@ -126,40 +125,48 @@ blank_od <- full_gc_data %>%
     summarise(mean_blank = mean(OD))
 
 gc_norm <- full_gc_data %>%
-    filter(!primary_id %in% c("ypad", "water", "NA")) %>%
+    filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA"))) %>%
     mutate(OD = OD - blank_od$mean_blank)
 
 gc_mean <- gc_norm %>%
+    filter(toupper(primary_id) != "BLANK") %>%
     group_by(primary_id, time) %>%
     mutate(mean_OD = mean(OD, na.rm = TRUE), sd_OD=sd(OD, na.rm=TRUE), se_OD=sd_OD/sqrt(length(OD))) %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
 full_plot <- gc_mean %>%
+    filter(species == "Candida albicans" | primary_id == "AMS5123" ) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
-    geom_point(show.legend = TRUE) +
+    geom_point() +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
     scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
                        labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_tableau(palette = "Tableau 20", limits=levels(gc_mean$primary_id)) +
+    scale_color_manual(values = facet_colors[7:20], name = "Isolate ID") +
+    theme_grey(base_family = "sans") +
     xlab("Time (hours)") +
     ylab("Mean OD600") +
-    labs(colour = "Isolate ID", title = "Growth in YPAD at 30C")
+    labs(title = expression(italic("C. albicans")~"Growth in YPAD at 30C"))
+    
+             
+             
 
-ggsave(paste0("images/",gc_date,"_combined_MEC_GC30.tiff"), full_plot, width = 9, height = 5.8, units = "in")
+ggsave(paste0("images/2023_growth_curves/",gc_date,"_Calbicans_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
+
+
 
 facet_plot <- gc_mean %>%
-    ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
+    ggplot(aes(x = time, y = mean_OD, color = species)) +
     geom_point(show.legend = TRUE) +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
     facet_wrap(~as.factor(primary_id), nrow = 2)+
     scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
                        labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_tableau(palette = "Tableau 20", limits=levels(gc_mean$primary_id)) +
+    scale_color_manual(values = c("#0077bb", "#ee7733", "#8c8c8c","#33bbee", "#cc3311", "#59A14FFF"))+
     xlab("Time (hours)") +
     ylab("Mean OD600") +
-    labs(colour = "Isolate ID", title = "Growth in YPAD at 30C")
+    labs(colour = "Species", title = "Growth in YPAD at 30C")
 
-ggsave(paste0("images/",gc_date,"_faceted_MEC_GC30.tiff"), facet_plot, width = 11, height = 8.5, units = "in")
+ggsave(paste0("images/2023_growth_curves/",gc_date,"_faceted_MEC_GC30.png"), facet_plot, width = 10, height = 4, units = "in", dpi = 300)
