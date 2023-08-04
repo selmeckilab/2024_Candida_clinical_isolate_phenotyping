@@ -27,9 +27,9 @@ library(patchwork)
 ## variables and functions
 api_token <- ""
 
-mic_date <- "2023-08-02"
-mic_spreadsheet <-"data/MIC/2023-08-02_EW_MCF_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-08-03_EW_MCF_SMG48_RPMI35.xlsx"
+mic_date <- "2023-07-27"
+mic_spreadsheet <-"data/MIC/2023-07-27_EW_MCF_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-07-28_EW_MCF_SMG48_RPMI35.xlsx"
 
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 api_url <-  "https://redcap.ahc.umn.edu/api/"
@@ -180,8 +180,8 @@ drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     
 
 drug_full_plot <- drug_mic_plot + drug_smg_plot + plot_layout(guides = 'collect')
-ggsave(paste0("images/2023_MICs",mic_date,"_MEC_",drug$drug[1],"_MIC.tiff"), 
-       drug_full_plot, width = 8, height = 8, units = "in")
+ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"), 
+       drug_full_plot, width = 6, height = 8, units = "in", device = png, dpi = 300)
 ################################################################################
 # work on imports
 drug_mic$concentration <- as.character(drug_mic$concentration)
