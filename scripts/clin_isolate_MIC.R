@@ -27,9 +27,12 @@ library(patchwork)
 ## variables and functions
 api_token <- ""
 
-mic_date <- "2023-07-27"
-mic_spreadsheet <-"data/MIC/2023-07-27_EW_MCF_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-07-28_EW_MCF_SMG48_RPMI35.xlsx"
+mic_date <- "2023-08-02"
+mic_spreadsheet <-"data/MIC/2023-08-02_EW_MCF_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-08-03_EW_MCF_SMG48_RPMI35.xlsx"
+strains <- c("AMS5123",
+             "MEC214", "MEC204", "MEC213", "MEC203", "MEC202", "MEC206", "MEC173",
+             "MEC200", "MEC199", "MEC201", "MEC198")
 
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 api_url <-  "https://redcap.ahc.umn.edu/api/"
@@ -108,6 +111,7 @@ stopifnot( "Neither strain or concentration are right number of cols" = 12 %in% 
 
 # make sure sheets are matched
 stopifnot("MIC and SMG strains don't match" = smg.meta$strain %in% meta.frame$strain)
+stopifnot("drugs don't match" = smg.meta$drug[1]==meta.frame$drug[1])
 
 #set var for names when pivoting tidy data below
 smg_names = case_when(length(smg.meta$strain[!is.na(smg.meta$strain)]) == 12 ~ "strain",
@@ -161,9 +165,7 @@ drug_smg_input <- smg_input(drug_od, cutoff)
 drug_smg_od <- calculate_od(drug48)
 drug_smg <- smg_subset(drug_smg_od, drug_smg_input)
 
-strains <- strain_order(drug_mic)
-
-drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff)
+drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff, strains)
 drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
         xlab(paste("\n", drug$drug[1]," MIC")) +
         theme(axis.text.x = element_text(angle = x_axis_angle),
