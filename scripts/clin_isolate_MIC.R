@@ -25,20 +25,23 @@ library(jsonlite)
 library(patchwork)
 ## ---------------------------
 ## variables and functions
+source("~/umn/mic_data/scripts/MIC_calc_functions.R")
+source("~/umn/mic_data/scripts/MIC_heatmap.R")
+
 api_token <- ""
 
-mic_date <- "2023-08-02"
-mic_spreadsheet <-"data/MIC/2023-08-02_EW_MCF_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-08-03_EW_MCF_SMG48_RPMI35.xlsx"
+mic_date <- "2023-08-03"
+mic_spreadsheet <-"data/MIC/2023-08-03_EW_MCF_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-08-04_EW_MCF_SMG48_RPMI35.xlsx"
 strains <- c("AMS5123",
-             "MEC214", "MEC204", "MEC213", "MEC203", "MEC202", "MEC206", "MEC173",
-             "MEC200", "MEC199", "MEC201", "MEC198")
+             "MEC223", "MEC222", "MEC221", "MEC220",
+             
+             "MEC210", "MEC209", "MEC207")
 
+exclude <- c("MEC219", "MEC218", "MEC217", "MEC216")
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
-source("~/umn/mic_data/scripts/MIC_calc_functions.R")
-source("~/umn/mic_data/scripts/MIC_heatmap.R")
 ################################################################################
 # MIC
 # Load metadata
