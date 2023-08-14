@@ -29,8 +29,8 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-07-19_MEC_GC30.xlsx"
-gc_date <- "2023-07-19"
+plate_reader_file <- "data/growth_curve/2023-08-08_MEC_GC30.xlsx"
+gc_date <- "2023-08-08"
 facet_colors <- c(paletteer_d("ggthemes::Tableau_10"), paletteer_d("ggsci::category20c_d3"))
 
 api_token <- ""
@@ -42,7 +42,7 @@ api_url <-  "https://redcap.ahc.umn.edu/api/"
 plate_od <- clean_growthcurver(plate_reader_file) %>%
     filter(time <=48) # make sure all plates are same time span
 
-samples <- samples(plate_reader_file)
+sample_data <- samples(plate_reader_file)
 
 plate_data <- SummarizeGrowthByPlate(plate_od)
 
@@ -51,7 +51,7 @@ colnames(plate_data)[colnames(plate_data)=="sample"] <- 'well'
 ###############################################################################
 # tidy, add metadata and summarize values
 plate_summary <- plate_data %>%
-    inner_join(samples, by = "well") %>%
+    inner_join(sample_data, by = "well") %>%
     group_by(primary_id) %>%
     filter(!toupper(primary_id) %in% toupper(c("water", "blank", "NA", "ypad"))) %>%
     summarize(mean_k = round(mean(k), digits = 3), 
@@ -65,11 +65,11 @@ plate_summary <- plate_data %>%
 ###############################################################################
 # redcap upload work 
 
-redcap_media <- case_when(toupper(samples$media[1])== "YPAD" ~ 1,
-                         toupper(samples$media[1])== "RPMI" ~ 3)
+redcap_media <- case_when(toupper(sample_data$media[1])== "YPAD" ~ 1,
+                         toupper(sample_data$media[1])== "RPMI" ~ 3)
 
-redcap_temp <- case_when(samples$temp[1]== 30 ~ 0,
-                         samples$temp[1] == 37 ~1)
+redcap_temp <- case_when(sample_data$temp[1]== 30 ~ 0,
+                         sample_data$temp[1] == 37 ~1)
 
 redcap_reader <- 0 # serial number 1803065
 
@@ -83,7 +83,7 @@ for(i in 1:length(plate_summary$primary_id)){
         gc_time = round(max(plate_od$time), digits = 2),
         gc_temp = redcap_temp,
         gc_media = redcap_media,
-        drug_used = samples$drug[1],
+        drug_used = sample_data$drug[1],
         k = plate_summary$mean_k[i],
         n0 = plate_summary$mean_n0[i],
         r = plate_summary$mean_r[i],
@@ -118,14 +118,15 @@ for(i in 1:length(plate_summary$primary_id)){
 # basic GC plot
 
 input_data <- growth_curve(plate_reader_file)
-full_gc_data <- link_metadata(input_data, samples, plate = 1)
+full_gc_data <- link_metadata(input_data, sample_data, plate = 1)
 
 blank_od <- full_gc_data %>%
-    filter(primary_id == "ypad") %>%
+    filter(toupper(primary_id) %in% c("YPAD", "BLANK")) %>%
     summarise(mean_blank = mean(OD))
 
 gc_norm <- full_gc_data %>%
-    filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA"))) %>%
+    filter(!is.na(primary_id)) %>%
+    filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA", "blank"))) %>%
     mutate(OD = OD - blank_od$mean_blank)
 
 gc_mean <- gc_norm %>%
@@ -136,19 +137,19 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
 full_plot <- gc_mean %>%
-    filter(species == "Candida albicans" | primary_id == "AMS5123" ) %>%
+    #filter(series =="AK" ) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
     geom_point() +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
     scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
                        labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_manual(values = facet_colors[7:20], name = "Isolate ID") +
+    scale_color_manual(values = facet_colors, name = "Isolate ID") +
     theme_grey(base_family = "sans") +
     xlab("Time (hours)") +
     ylab("Mean OD600") +
     labs(title = expression(italic("C. albicans")~"Growth in YPAD at 30C"))
-    
+    #labs(title = "Series AK Growth in YPAD at 30C")
              
              
 
