@@ -30,7 +30,8 @@ source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
 plate_reader_file <- "data/growth_curve/2023-08-08_MEC_GC30.xlsx"
-gc_date <- "2023-08-08"
+plate_reader_sn <- ""
+gc_date <- ""
 facet_colors <- c(paletteer_d("ggthemes::Tableau_10"), paletteer_d("ggsci::category20c_d3"))
 
 api_token <- ""
@@ -54,6 +55,8 @@ plate_summary <- plate_data %>%
     inner_join(sample_data, by = "well") %>%
     group_by(primary_id) %>%
     filter(!toupper(primary_id) %in% toupper(c("water", "blank", "NA", "ypad"))) %>%
+    filter(!is.na(primary_id)) %>%
+    #filter(str_detect(well, "A|B|C")) %>% # to filter for specific rows
     summarize(mean_k = round(mean(k), digits = 3), 
               mean_n0 = round(mean(n0), digits = 3),
               mean_r = round(mean(r), digits = 3),
@@ -71,14 +74,16 @@ redcap_media <- case_when(toupper(sample_data$media[1])== "YPAD" ~ 1,
 redcap_temp <- case_when(sample_data$temp[1]== 30 ~ 0,
                          sample_data$temp[1] == 37 ~1)
 
-redcap_reader <- 0 # serial number 1803065
+redcap_reader <- case_when(plate_reader_sn == "1803065" ~ 0,
+                           plate_reader_sn == "23012423" ~ 1,
+                           plate_reader_sn == "23012512" ~ 2) # serial number 1803065
 
 for(i in 1:length(plate_summary$primary_id)){
     
     record <- c(
         primary_id = plate_summary$primary_id[i],
         redcap_repeat_instrument = "growth_curve_data",
-        redcap_repeat_instance = "1",
+        redcap_repeat_instance = "new",
         gc_date = gc_date,
         gc_time = round(max(plate_od$time), digits = 2),
         gc_temp = redcap_temp,
