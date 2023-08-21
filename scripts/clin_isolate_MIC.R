@@ -30,9 +30,9 @@ source("~/umn/mic_data/scripts/MIC_heatmap.R")
 
 api_token <- ""
 
-mic_date <- "2023-08-09"
-mic_spreadsheet <-"data/MIC/2023-08-09_EW_FLC_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-08-10_EW_FLC_SMG48_RPMI35.xlsx"
+mic_date <- "2023-08-02"
+mic_spreadsheet <-"data/MIC/2023-08-02_EW_FLC_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-08-03_EW_FLC_SMG48_RPMI35.xlsx"
 strains <- c("AMS5123",
              "MEC223", "MEC222", "MEC221", "MEC220",
              
@@ -170,21 +170,24 @@ drug_smg <- smg_subset(drug_smg_od, drug_smg_input)
 
 drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff, strains)
 drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
-        xlab(paste("\n", drug$drug[1]," MIC")) +
+        xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
+             .default = paste(drug$drug[1], " MIC"))) +
         theme(axis.text.x = element_text(angle = x_axis_angle),
-          plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
+          #plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
           axis.title.y = element_text(hjust = 0.5,
                                       margin = margin(0,10,0,0))) 
     
 drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     theme(axis.text.y = element_blank(),
-          axis.text.x = element_text(vjust = 0),
+          axis.text.x = element_text(),
+         # plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
           axis.title.x = element_text(lineheight = 1.2)) +
     scale_x_continuous(limits = c(0,1), breaks = c(0, 0.5, 1), labels = c("0", "", "1")) +
-    xlab("\n\nSMG") 
+    xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
+         .default = "SMG")) 
     
 
-drug_full_plot <- drug_mic_plot + drug_smg_plot + plot_layout(guides = 'collect')
+drug_full_plot <- (drug_mic_plot + drug_smg_plot) + plot_layout(guides = 'collect')
 ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"), 
        drug_full_plot, 
        width = 6, 
