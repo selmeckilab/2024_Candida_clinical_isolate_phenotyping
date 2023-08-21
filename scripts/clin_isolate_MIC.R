@@ -30,15 +30,15 @@ source("~/umn/mic_data/scripts/MIC_heatmap.R")
 
 api_token <- ""
 
-mic_date <- "2023-08-02"
-mic_spreadsheet <-"data/MIC/2023-08-02_EW_FLC_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-08-03_EW_FLC_SMG48_RPMI35.xlsx"
-#strains <- c("AMS5123",
-#             "MEC223", "MEC222", "MEC221", "MEC220",
-#             
-#             "MEC210", "MEC209", "MEC207")
+mic_date <- "2023-08-15"
+mic_spreadsheet <-"data/MIC/2023-08-15_EW_MCF_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-08-16_EW_MCF_SMG48_RPMI35.xlsx"
+#strains <- c("AMS5122",
+#             "MEC161", "MEC151", "MEC150", "MEC149",
+#             "MEC148", "MEC147", "MEC146", "MEC088",
+#             "MEC118", "MEC117", "MEC116")
 
-exclude <- c("MEC219", "MEC218", "MEC217", "MEC216")
+#exclude <- c("MEC219", "MEC218", "MEC217", "MEC216")
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
@@ -175,14 +175,14 @@ drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
         xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
              .default = paste(drug$drug[1], " MIC"))) +
         theme(axis.text.x = element_text(angle = x_axis_angle),
-          #plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
+          plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
           axis.title.y = element_text(hjust = 0.5,
                                       margin = margin(0,10,0,0))) 
     
 drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     theme(axis.text.y = element_blank(),
           axis.text.x = element_text(),
-         # plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
+         plot.margin = unit(c(0,0.5,0.5,0), "cm"),
           axis.title.x = element_text(lineheight = 1.2)) +
     scale_x_continuous(limits = c(0,1), breaks = c(0, 0.5, 1), labels = c("0", "", "1")) +
     xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
