@@ -33,10 +33,10 @@ api_token <- ""
 mic_date <- "2023-08-02"
 mic_spreadsheet <-"data/MIC/2023-08-02_EW_FLC_MIC24_RPMI35.xlsx"
 smg_spreadsheet <- "data/MIC/2023-08-03_EW_FLC_SMG48_RPMI35.xlsx"
-strains <- c("AMS5123",
-             "MEC223", "MEC222", "MEC221", "MEC220",
-             
-             "MEC210", "MEC209", "MEC207")
+#strains <- c("AMS5123",
+#             "MEC223", "MEC222", "MEC221", "MEC220",
+#             
+#             "MEC210", "MEC209", "MEC207")
 
 exclude <- c("MEC219", "MEC218", "MEC217", "MEC216")
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
@@ -103,6 +103,8 @@ drug <- drug %>%
                                      (!("blank" %in%  c(strain, concentration)) & drug == "AMB" & concentration == "1" & strain %in% control_strains) ~ "blank",
                                      .default = concentration))
 drug$concentration <-factor(tolower(drug$concentration), levels = mixedsort(unique(drug$concentration))) 
+strains <- c(unique(drug$strain[drug$strain %in% control_strains]), rev(unique(drug$strain[!(drug$strain %in% control_strains)])))
+
 ################################################################################
 # SMG
 # Load metadata
