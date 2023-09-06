@@ -27,9 +27,10 @@ spot_plates <- '56394'
 genes <- '56393'
 avail_seq_data <- '52998'
 
+token <- "" # don't forget to delete before gh
+
 # function to import report from redcap
 import_report <- function(report_number) {
-  token <- token # API token (string) here; I've got a placeholder bc of github
   url <- "https://redcap.ahc.umn.edu/api/"
   formData <- list("token"=token,
                    content='report',
