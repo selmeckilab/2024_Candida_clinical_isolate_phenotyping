@@ -19,13 +19,13 @@ library(writexl)
 library(reshape2)
 
 # redcap report IDs
-samples <- '41047'
-mic_results <- '41628'
-growth_curves <- '53245'
-chef_data <- '52263'
-spot_plates <- '56394'
-genes <- '56393'
-avail_seq_data <- '52998'
+samples <- '58043'
+mic_results <- '58044'
+growth_curves <- '58045'
+chef_data <- '58046'
+spot_plates <- '58047'
+genes <- '58048'
+avail_seq_data <- '58050'
 
 token <- "" # don't forget to delete before gh
 
@@ -92,9 +92,9 @@ seq_info <- import_report(avail_seq_data) %>%
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, smg) %>%
+    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>%
     pivot_wider(names_from = "redcap_repeat_instance", 
-                values_from = c("drug","mic50","smg", "mic_date"), 
+                values_from = c("drug","mic50", "eucast_breakpoint", "smg", "mic_date"), 
                 names_vary = "slowest")
 
 # all_data_merged
@@ -106,3 +106,10 @@ all_samples <- left_join(sample_info, gene_vars) %>%
 
 write_xlsx(all_samples,paste0(Sys.Date(),"merged_Candida_data.xlsx"))
 
+mic_by_species <- left_join(mic_info, sample_info, by = join_by("primary_id"))
+
+cglab_mic <- mic_by_species %>%
+    filter(genus_species == "Candida glabrata")
+
+calb_mic <- mic_by_species%>%
+    filter(genus_species == "Candida albicans")
