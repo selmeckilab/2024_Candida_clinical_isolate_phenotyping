@@ -18,8 +18,8 @@ library(writexl)
 library(reshape2)
 
 # redcap report IDs
-samples <- '41047'
-mic_results <- '41628'
+samples <- '58043'
+mic_results <- '58044'
 
 token <- "" # don't forget to delete before gh
 
