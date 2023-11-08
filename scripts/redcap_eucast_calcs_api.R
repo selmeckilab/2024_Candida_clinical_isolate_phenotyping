@@ -18,8 +18,8 @@ library(writexl)
 library(reshape2)
 
 # redcap report IDs
-samples <- '41047'
-mic_results <- '41628'
+samples <- '58043'
+mic_results <- '58044'
 
 token <- "" # don't forget to delete before gh
 
@@ -62,7 +62,7 @@ eucast_mic$mic50 <- case_when(grepl(">", eucast_mic$mic50) ~ (as.numeric(sub("[^
 
 eucast_mic <- eucast_mic %>%
     filter(mic_media == "RPMI" & mic_temp=="35C") %>%
-    filter(!(drug == "amphotericin B" & mic_date %in% c(as.Date("2023-08-24"), as.Date("2023-08-15"), as.Date("2023-08-09")))) %>%
+    filter(mic_date %in% c(as.Date("2023-10-11"), as.Date("2023-10-17"))) %>%
     group_by(genus_species) %>%
     mutate(eucast_breakpoint = case_when(drug!= "fluconazole" & genus_species %in% non_eucast_species ~ 3,
                                          drug == "fluconazole" & genus_species == "Candida krusei (Pichia kudriavzevii)" ~ 4,
