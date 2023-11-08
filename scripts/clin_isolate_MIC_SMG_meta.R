@@ -37,6 +37,7 @@ input_drug <- "mcf"
 mic_date <- "2023-10-17"
 mic_spreadsheet <-"data/MIC/2023-10-17_EW_MIC24_RPMI35.xlsx"
 smg_spreadsheet <- "data/MIC/2023-10-18_EW_SMG48_RPMI35.xlsx"
+
 # Type either "strain" or "concentration" for your column names
 column_names <- "strain"
 
@@ -48,7 +49,7 @@ concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32)
 #strain_list <- c("AMS5123", "MEC245", "MEC259", "MEC260", "MEC262","MEC264", "MEC265",  "MEC286", "MEC290", "MEC291")
 
 ## TO SKIP STRAINS: 
-# need strain list above to keep, and add IDs in "exclude" vector. Otherwise leave commented out.
+# need strain_list above with wanted strains, plus add IDs in "exclude" vector. Otherwise leave commented out.
 #exclude <- c("MEC285","MEC261")
 
 ## Add control IDs if not included below
@@ -56,7 +57,7 @@ control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 
 ################################################################################
 # MIC
-# Load metadata - specify which sheet it is (usually 2 for me)
+# Load metadata - specify which sheet it is (usually 2) and add vals from above
 meta.frame <- read_excel(mic_spreadsheet, 
                          sheet = 2)
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=12-length(input_drug)))
@@ -100,6 +101,7 @@ for(i in 1:3){
 
   assign(paste("rep", i,sep = ""), d.frame)
 }
+
 # pull together and tidy data
 drug_data <- rbind(rep1,rep2,rep3)
 drug <- pivot_longer(drug_data, 
@@ -113,13 +115,13 @@ drug <- drug %>%
                                      .default = concentration))
 drug$concentration <-factor(tolower(drug$concentration), levels = mixedsort(unique(drug$concentration))) 
 
-# default strain list (alphanumeric + control at bottom) unless specified at top
+# create default strain list (alphanumeric + control at bottom) unless specified at top
 if(exists("strain_list")) {
     strains <- strain_list
 } else {
     strains <- c(unique(drug$strain[drug$strain %in% control_strains]), rev(unique(drug$strain[!(drug$strain %in% control_strains)])))}
 ################################################################################
-# Read in SMG ODs and apply same metadata as above
+# Read in SMG ODs and reuse metadata from MIC spreadsheet 
 for(i in 1:3){
     d.frame <- read_excel(smg_spreadsheet, 
                           range = meta.frame[[tolower(input_drug)]][i])
@@ -155,7 +157,7 @@ drug48 <- drug48 %>%
 drug48$concentration <-factor(tolower(drug48$concentration), levels = mixedsort(unique(drug48$concentration))) 
 
 ################################################################################
-# calculate relative ODs, MIC value
+# calculate relative ODs and MIC values
 drug_od <- calculate_od(drug)
 
 drug_mic <- mic(drug_od, cutoff)
@@ -164,8 +166,13 @@ drug_smg_input <- smg_input(drug_od, cutoff)
 drug_smg_od <- calculate_od(drug48)
 drug_smg <- smg_subset(drug_smg_od, drug_smg_input)
 
+################################################################################
 # finally plot
+
+# get the yellow line
 drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff, strains)
+
+# make the "heatmap"
 drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
         xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
              .default = paste(drug$drug[1], " MIC"))) +
@@ -173,7 +180,8 @@ drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
           plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
           axis.title.y = element_text(hjust = 0.5,
                                       margin = margin(0,10,0,0))) 
-    
+
+# barplot   
 drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     theme(axis.text.y = element_blank(),
           axis.text.x = element_text(),
@@ -183,8 +191,10 @@ drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
          .default = "SMG")) 
     
-
+# pull together with patchwork
 drug_full_plot <- (drug_mic_plot + drug_smg_plot) + plot_layout(guides = 'collect')
+
+# save as desired
 ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"), 
        drug_full_plot, 
        width = 6, 
@@ -194,9 +204,11 @@ ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"),
        bg = "white",
        dpi = 300)
 ################################################################################
-# work on imports
+# REDCap imports
+# numeric values to text
 drug_mic$concentration <- as.character(drug_mic$concentration)
 
+# append > when needed
 drug_mic <- drug_mic %>%
     mutate(concentration = case_when((mean_norm_OD > cutoff & concentration == max_concentration) ~ paste0(">", max_concentration),
                                      .default = concentration))
@@ -217,6 +229,7 @@ redcap_drug_solvent <- case_when(drug$drug[1] == "FLC" ~ "EtOH",
                                  drug$drug[1] == "MCF" ~ "DMSO",
                                  drug$drug[1] == "AMB" ~ "DMSO")
 
+# for each strain, create new record and send form
 for(i in 1:length(drug_mic$strain)){
     primary_id=drug_mic$strain[i]
     
