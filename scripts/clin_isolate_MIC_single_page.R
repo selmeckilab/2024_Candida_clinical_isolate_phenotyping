@@ -29,10 +29,10 @@ source("~/umn/mic_data/scripts/MIC_calc_functions.R")
 source("~/umn/mic_data/scripts/MIC_heatmap.R")
 
 api_token <- ""
-input_drug <- "amb"
-mic_date <- "2023-10-31"
-mic_spreadsheet <-"data/MIC/2023-10-31_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-11-01_EW_SMG48_RPMI35.xlsx"
+input_drug <- "FLC"
+mic_spreadsheet <-"data/MIC/2023-11-07_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-11-08_EW_SMG48_RPMI35.xlsx"
+mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 #strains <- c("AMS5122",
 #             "MEC161", "MEC151", "MEC150", "MEC149",
 #             "MEC148", "MEC147", "MEC146", "MEC088",
@@ -48,8 +48,6 @@ api_url <-  "https://redcap.ahc.umn.edu/api/"
 meta.frame <- read_excel(mic_spreadsheet, 
                          sheet = 2)
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=11))
-# Make sure at least one column is length 12
-#stopifnot( "Neither strain or concentration are right number of cols" = 12 %in% c(length(meta.frame$strain[!is.na(meta.frame$strain)]), length(meta.frame$concentration[!is.na(meta.frame$concentration)])))
 
 meta.frame$concentration <- case_when(meta.frame$drug[1] == "FLC" ~ c(0,0.5,1,2,4,8,16,32,NA,NA,NA,NA),
                                       meta.frame$drug[1] %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1,NA,NA,NA,NA))
@@ -113,12 +111,9 @@ smg.meta <- read_excel(smg_spreadsheet,
                          sheet = 2)
 
 smg.meta$drug <- c(toupper(input_drug), rep(NA, times=11))
-# Make sure at least one column is length 12
-#stopifnot( "Neither strain or concentration are right number of cols" = 12 %in% c(length(smg.meta$strain[!is.na(smg.meta$strain)]), length(smg.meta$concentration[!is.na(smg.meta$concentration)])))
 
 # make sure sheets are matched
 stopifnot("MIC and SMG strains don't match" = smg.meta$strain %in% meta.frame$strain)
-stopifnot("drugs don't match" = smg.meta$drug[1]==meta.frame$drug[1])
 
 smg.meta$concentration <- case_when(smg.meta$drug[1]== "FLC" ~ c(0,0.5,1,2,4,8,16,32,NA,NA,NA,NA),
                                       smg.meta$drug[1] %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1,NA,NA,NA,NA))

@@ -33,11 +33,11 @@ api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 ## Drug and spreadsheet data
-input_drug <- "mcf"
+input_drug <- "flc"
 replicates <- 3
-mic_date <- "2023-10-17"
-mic_spreadsheet <-"data/MIC/2023-10-17_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-10-18_EW_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"data/MIC/2023-11-07_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-11-08_EW_SMG48_RPMI35.xlsx"
+mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ## Type either "strain" or "concentration" for your column names
 column_names <- "strain"
@@ -110,7 +110,8 @@ drug <- pivot_longer(drug_data,
                     values_to = "OD600", 
                     cols = -c(all_of(meta_col), plate, drug, media, temp)) 
 
-## This sets the blank when it's one well of the control strain
+## BLANKS: this checks for "blank" labeled wells in metadata
+## if none found, sets it to the highest concentration well of the control strain
 drug <- drug %>%
     mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & drug == "FLC" & concentration == "32" & strain %in% control_strains) ~ "blank",
                                      (!("blank" %in%  c(strain, concentration)) & drug == "MCF" & concentration == "1" & strain %in% control_strains) ~ "blank",
@@ -125,10 +126,11 @@ if(exists("strain_list")) {
     strains <- c(unique(drug$strain[drug$strain %in% control_strains]), rev(unique(drug$strain[!(drug$strain %in% control_strains)])))}
 
 ################################################################################
-## Read in SMG ODs and reuse metadata from MIC spreadsheet 
+## Read in SMG ODs and reuse metadata from MIC spreadsheet
+smg_range <- read_excel(smg_spreadsheet, sheet=2)
 for(i in 1:replicates){
     d.frame <- read_excel(smg_spreadsheet, 
-                          range = meta.frame[[tolower(input_drug)]][i])
+                          range = smg_range[[tolower(input_drug)]][i])
     
     ## Colnames set from input variable 
     colnames(d.frame) <- as.character(pull(meta.frame,column_names))
