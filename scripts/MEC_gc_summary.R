@@ -29,10 +29,10 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-08-08_MEC_GC30.xlsx"
-plate_reader_sn <- ""
-gc_date <- ""
-facet_colors <- c(paletteer_d("ggthemes::Tableau_10"), paletteer_d("ggsci::category20c_d3"))
+plate_reader_file <- "data/growth_curve/2023-10-11_MEC_GC30.xlsx"
+plate_reader_sn <- "23012512"
+gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
+facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
 api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
@@ -76,7 +76,8 @@ redcap_temp <- case_when(sample_data$temp[1]== 30 ~ 0,
 
 redcap_reader <- case_when(plate_reader_sn == "1803065" ~ 0,
                            plate_reader_sn == "23012423" ~ 1,
-                           plate_reader_sn == "23012512" ~ 2) # serial number 1803065
+                           plate_reader_sn == "23012512" ~ 2,
+                           plate_reader_sn == "151117B" ~ 3) # serial number 1803065
 
 for(i in 1:length(plate_summary$primary_id)){
     
@@ -142,7 +143,7 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
 full_plot <- gc_mean %>%
-    #filter(series =="AK" ) %>%
+    filter(species =="Candida lusitaniae" ) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
     geom_point() +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
@@ -153,12 +154,12 @@ full_plot <- gc_mean %>%
     theme_grey(base_family = "sans") +
     xlab("Time (hours)") +
     ylab("Mean OD600") +
-    labs(title = expression(italic("C. albicans")~"Growth in YPAD at 30C"))
+    labs(title = expression(italic("C. lusitaniae")~"Growth in YPAD at 30C"))
     #labs(title = "Series AK Growth in YPAD at 30C")
              
              
 
-ggsave(paste0("images/2023_growth_curves/",gc_date,"_Calbicans_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
+ggsave(paste0("images/2023_growth_curves/",gc_date,"_Clusitaniae_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
 
 
 
