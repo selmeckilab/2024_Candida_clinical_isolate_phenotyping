@@ -29,8 +29,8 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-10-11_MEC_GC30.xlsx"
-plate_reader_sn <- "23012512"
+plate_reader_file <- "data/growth_curve/2023-11-07_MEC_GC30.xlsx"
+plate_reader_sn <- "151117B"
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
@@ -66,6 +66,63 @@ plate_summary <- plate_data %>%
               mean_auce = round(mean(auc_e), digits = 3))
 
 ###############################################################################
+###############################################################################
+# basic GC plot
+
+input_data <- growth_curve(plate_reader_file)
+full_gc_data <- link_metadata(input_data, sample_data, plate = 1)
+
+blank_od <- full_gc_data %>%
+    filter(toupper(primary_id) %in% c("YPAD", "BLANK")) %>%
+    summarise(mean_blank = mean(OD))
+
+gc_norm <- full_gc_data %>%
+    filter(!is.na(primary_id)) %>%
+    filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA", "blank"))) %>%
+    mutate(OD = OD - blank_od$mean_blank)
+
+gc_mean <- gc_norm %>%
+    filter(toupper(primary_id) != "BLANK") %>%
+    group_by(primary_id, time) %>%
+    mutate(mean_OD = mean(OD, na.rm = TRUE), sd_OD=sd(OD, na.rm=TRUE), se_OD=sd_OD/sqrt(length(OD))) %>%
+    mutate(primary_id = as.factor(primary_id)) %>%
+    mutate(primary_id = fct_relevel(primary_id, mixedsort))
+
+spec <- "Candida orthopsilosis"
+full_plot <- gc_mean %>%
+    filter(species == spec) %>%
+    ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
+    geom_point() +
+    geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
+    scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
+    scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
+                       labels = c ("0", "12", "24", "36", "48")) +
+    scale_color_manual(values = facet_colors, name = "Isolate ID") +
+    theme_grey(base_family = "sans") +
+    xlab("Time (hours)") +
+    ylab("Mean OD600") +
+    labs(title = bquote(italic(.(spec))~"growth in YPAD at 30C"))
+
+
+ggsave(paste0("images/2023_growth_curves/",gc_date,spec,"_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
+
+
+
+facet_plot <- gc_mean %>%
+    ggplot(aes(x = time, y = mean_OD, color = species)) +
+    geom_point(show.legend = TRUE) +
+    geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
+    facet_wrap(~as.factor(primary_id), nrow = 2)+
+    scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
+    scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
+                       labels = c ("0", "12", "24", "36", "48")) +
+    scale_color_manual(values = c("#0077bb", "#ee7733", "#8c8c8c","#33bbee", "#cc3311", "#59A14FFF"))+
+    xlab("Time (hours)") +
+    ylab("Mean OD600") +
+    labs(colour = "Species", title = "Growth in YPAD at 30C")
+
+ggsave(paste0("images/2023_growth_curves/",gc_date,"_faceted_MEC_GC30.png"), facet_plot, width = 10, height = 4, units = "in", dpi = 300)
+
 # redcap upload work 
 
 redcap_media <- case_when(toupper(sample_data$media[1])== "YPAD" ~ 1,
@@ -77,7 +134,7 @@ redcap_temp <- case_when(sample_data$temp[1]== 30 ~ 0,
 redcap_reader <- case_when(plate_reader_sn == "1803065" ~ 0,
                            plate_reader_sn == "23012423" ~ 1,
                            plate_reader_sn == "23012512" ~ 2,
-                           plate_reader_sn == "151117B" ~ 3) # serial number 1803065
+                           plate_reader_sn == "151117B" ~ 3) 
 
 for(i in 1:length(plate_summary$primary_id)){
     
@@ -119,61 +176,3 @@ for(i in 1:length(plate_summary$primary_id)){
    result <- httr::content(response)
    print(result)
 }
-
-###############################################################################
-# basic GC plot
-
-input_data <- growth_curve(plate_reader_file)
-full_gc_data <- link_metadata(input_data, sample_data, plate = 1)
-
-blank_od <- full_gc_data %>%
-    filter(toupper(primary_id) %in% c("YPAD", "BLANK")) %>%
-    summarise(mean_blank = mean(OD))
-
-gc_norm <- full_gc_data %>%
-    filter(!is.na(primary_id)) %>%
-    filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA", "blank"))) %>%
-    mutate(OD = OD - blank_od$mean_blank)
-
-gc_mean <- gc_norm %>%
-    filter(toupper(primary_id) != "BLANK") %>%
-    group_by(primary_id, time) %>%
-    mutate(mean_OD = mean(OD, na.rm = TRUE), sd_OD=sd(OD, na.rm=TRUE), se_OD=sd_OD/sqrt(length(OD))) %>%
-    mutate(primary_id = as.factor(primary_id)) %>%
-    mutate(primary_id = fct_relevel(primary_id, mixedsort))
-
-full_plot <- gc_mean %>%
-    filter(species =="Candida lusitaniae" ) %>%
-    ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
-    geom_point() +
-    geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
-    scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
-    scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
-                       labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_manual(values = facet_colors, name = "Isolate ID") +
-    theme_grey(base_family = "sans") +
-    xlab("Time (hours)") +
-    ylab("Mean OD600") +
-    labs(title = expression(italic("C. lusitaniae")~"Growth in YPAD at 30C"))
-    #labs(title = "Series AK Growth in YPAD at 30C")
-             
-             
-
-ggsave(paste0("images/2023_growth_curves/",gc_date,"_Clusitaniae_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
-
-
-
-facet_plot <- gc_mean %>%
-    ggplot(aes(x = time, y = mean_OD, color = species)) +
-    geom_point(show.legend = TRUE) +
-    geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
-    facet_wrap(~as.factor(primary_id), nrow = 2)+
-    scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
-    scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
-                       labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_manual(values = c("#0077bb", "#ee7733", "#8c8c8c","#33bbee", "#cc3311", "#59A14FFF"))+
-    xlab("Time (hours)") +
-    ylab("Mean OD600") +
-    labs(colour = "Species", title = "Growth in YPAD at 30C")
-
-ggsave(paste0("images/2023_growth_curves/",gc_date,"_faceted_MEC_GC30.png"), facet_plot, width = 10, height = 4, units = "in", dpi = 300)
