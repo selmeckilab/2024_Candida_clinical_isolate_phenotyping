@@ -29,8 +29,8 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-11-07_MEC_GC30.xlsx"
-plate_reader_sn <- "151117B"
+plate_reader_file <- "data/growth_curve/2023-08-25_MEC_GC30.xlsx"
+plate_reader_sn <- "1803065"
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
@@ -41,7 +41,7 @@ api_url <-  "https://redcap.ahc.umn.edu/api/"
 ## Read in plate, get sample metadata and check fit of logistic curve
 
 plate_od <- clean_growthcurver(plate_reader_file) %>%
-    filter(time <=48) # make sure all plates are same time span
+    filter(time <= 48) # make sure all plates are same time span
 
 sample_data <- samples(plate_reader_file)
 
@@ -56,7 +56,7 @@ plate_summary <- plate_data %>%
     group_by(primary_id) %>%
     filter(!toupper(primary_id) %in% toupper(c("water", "blank", "NA", "ypad"))) %>%
     filter(!is.na(primary_id)) %>%
-    #filter(str_detect(well, "A|B|C")) %>% # to filter for specific rows
+   # filter(str_detect(well, "F|G|H")) %>% # to filter for specific rows
     summarize(mean_k = round(mean(k), digits = 3), 
               mean_n0 = round(mean(n0), digits = 3),
               mean_r = round(mean(r), digits = 3),
@@ -81,6 +81,11 @@ gc_norm <- full_gc_data %>%
     filter(!toupper(primary_id) %in% toupper(c("ypad", "water", "NA", "blank"))) %>%
     mutate(OD = OD - blank_od$mean_blank)
 
+# Filter for wells and times when samples added at different points
+#gc_norm <- gc_norm %>% 
+#    filter(str_detect(well, "F|G|H")) %>% 
+#    filter(time >27.18)
+
 gc_mean <- gc_norm %>%
     filter(toupper(primary_id) != "BLANK") %>%
     group_by(primary_id, time) %>%
@@ -88,9 +93,10 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
-spec <- "Candida orthopsilosis"
+spec <- "Candida albicans"
+ctrl <- "Candida lusitaniae" # or empty str if not plotting
 full_plot <- gc_mean %>%
-    filter(species == spec) %>%
+    filter(species == spec | species == ctrl) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
     geom_point() +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
@@ -104,7 +110,7 @@ full_plot <- gc_mean %>%
     labs(title = bquote(italic(.(spec))~"growth in YPAD at 30C"))
 
 
-ggsave(paste0("images/2023_growth_curves/",gc_date,spec,"_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
+ggsave(paste0("images/2023_growth_curves/",gc_date,"_C",str_split_i(spec, " ", 2),"_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
 
 
 
