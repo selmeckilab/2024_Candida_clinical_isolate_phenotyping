@@ -48,15 +48,9 @@ import_report <- function(report_number) {
 
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
-    select(-c(starts_with('redcap_repeat')))
-
-# snp data
-gene_vars <- import_report(genes) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("gene", "protein_change", "alt_freq"),
-                names_vary = "slowest")
+    select(-c(starts_with('redcap_repeat'))) %>%
+    filter(!primary_id %in% c("MEC103", "MEC113")) %>%
+    filter(isolate_type == "clinical")
 
 # CHEF gel results
 chef_done <- import_report(chef_data) %>%
@@ -64,13 +58,6 @@ chef_done <- import_report(chef_data) %>%
     select(primary_id, redcap_repeat_instance, gel_date, blot_prepared) %>%
     pivot_wider(names_from = "redcap_repeat_instance",
                 values_from = c("gel_date", "blot_prepared"),
-                names_vary = "slowest")
-
-gc <- import_report(growth_curves) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gc_date, drug_used, gc_temp, gc_time, k, t_gen, auc_l) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("gc_date", "drug_used", "gc_temp", "gc_time", "k", "t_gen", "auc_l"),
                 names_vary = "slowest")
 
 # No CHEF results yet
@@ -81,35 +68,26 @@ todo <- sample_info %>%
 # export chef-todo
 #write_xlsx(todo,paste0(Sys.Date(),"_CHEF_todo.xlsx"))
 
-# MSI location if sequencing data exists
-seq_info <- import_report(avail_seq_data) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, msi_path_r1, msi_path_r2, msi_nanopore_path) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("msi_path_r1", "msi_path_r2", "msi_nanopore_path"),
-                names_vary = "slowest")
-
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>%
-    pivot_wider(names_from = "redcap_repeat_instance", 
-                values_from = c("drug","mic50", "eucast_breakpoint", "smg", "mic_date"), 
+    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
+    left_join((sample_info %>% select(primary_id, genus_species, series_id)), by=join_by(primary_id)) 
+
+# growth curve results
+gc <- import_report(growth_curves) %>%
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, gc_date, drug_used, gc_temp, gc_time, k, r, t_gen, auc_l)
+
+# MSI location if sequencing data exists
+seq_info <- import_report(avail_seq_data) %>%
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, msi_path_r1, msi_path_r2, msi_long_read_path) %>%
+    pivot_wider(names_from = "redcap_repeat_instance",
+                values_from = c("msi_path_r1", "msi_path_r2", "msi_long_read_path"),
                 names_vary = "slowest")
 
-# all_data_merged
-all_samples <- left_join(sample_info, gene_vars) %>%
-   left_join(mic_info, by = join_by("primary_id")) %>%
-   left_join(chef_done, by = join_by("primary_id")) %>%
-   left_join(gc, by = join_by("primary_id")) %>%
-   filter(!primary_id %in% c("MEC103", "MEC113")) 
-
-write_xlsx(all_samples,paste0(Sys.Date(),"merged_Candida_data.xlsx"))
-
-mic_by_species <- left_join(mic_info, sample_info, by = join_by("primary_id"))
-
-cglab_mic <- mic_by_species %>%
-    filter(genus_species == "Candida glabrata")
-
-calb_mic <- mic_by_species%>%
-    filter(genus_species == "Candida albicans")
+# snp data
+gene_vars <- import_report(genes) %>%
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq)# %>%
