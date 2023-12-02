@@ -13,10 +13,11 @@
 ## load packages
 library(tidyverse)
 library(lubridate)
-library(magrittr)
+#library(magrittr)
 library(writexl)
-library(reshape2)
-
+#library(reshape2)
+library(RCurl)
+library(jsonlite)
 # redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
@@ -98,7 +99,6 @@ eucast_mic <- eucast_mic %>%
                                                                                          "Candida parapsilosis",
                                                                                          "Candida tropicalis") & mic50 > 1 ~ 2))
 
-#write_csv(eucast_mic, "eucast_raw.csv")
 
 # Upload EUCAST categories to REDCap
 
