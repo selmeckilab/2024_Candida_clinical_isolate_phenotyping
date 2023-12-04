@@ -71,6 +71,11 @@ mic_info <- import_report(mic_results) %>%
     select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
     left_join((sample_info %>% select(primary_id, genus_species, series_id)), by=join_by(primary_id)) 
 
+# MIC to-do
+mic_to_do <- sample_info %>% 
+    filter(isolate_type == "clinical") %>%
+    anti_join(mic_info)
+
 # growth curve results
 gc <- import_report(growth_curves) %>%
     filter(redcap_repeat_instrument != "NA") %>%
