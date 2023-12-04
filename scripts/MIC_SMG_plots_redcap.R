@@ -16,13 +16,9 @@
 options(scipen = 999) # To view outputs in non-scientific notation
 ## ---------------------------
 ## load packages
-library(readxl)
-library(tidyverse)
-library(gtools)
 library(RCurl)
-library(digest)
+#library(digest)
 library(jsonlite)
-library(patchwork)
 ## ---------------------------
 ## Functions
 source("~/umn/mic_data/scripts/MIC_calc_functions.R")

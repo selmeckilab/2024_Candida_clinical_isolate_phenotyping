@@ -13,10 +13,7 @@
 ## ---------------------------
 ## load packages
 library(tidyverse)
-library(lubridate)
-library(magrittr)
 library(writexl)
-library(reshape2)
 
 # redcap report IDs
 samples <- '58043'

@@ -15,14 +15,9 @@
 options(scipen = 999) # To view outputs in non-scientific notation
 ## ---------------------------
 ## load packages
-library(tidyverse)
-library(readxl)
-library(writexl)
-library(RCurl)
-library(digest)
+#library(RCurl)
+#library(digest)
 library(jsonlite)
-library(ggplot2)
-library(gtools)
 library(paletteer)
 ################################################################################
 ## Get spreadsheet cleaning and gc metric functions

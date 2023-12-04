@@ -18,6 +18,10 @@ library(jsonlite)
 
 # spreadsheet of variants
 vars <- read_csv("Calbicans_MEC_bwa_filtered_annotated_amr.csv") 
+vars <- vars %>% 
+    mutate(across(where(is.numeric), ~num(., digits = 2)))
+    
+
 amr_genes <- read_csv("redcap_gene_ids.csv")
 ref <- "SC5314 A21"
 
@@ -55,7 +59,7 @@ sample_info <- import_report(sample_report) %>%
     filter(isolate_type == "clinical")
 
 # Variants in redcap
-gene_vars <- import_report(genes) %>%
+gene_vars <- import_report(gene_report) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq)
 
@@ -63,7 +67,9 @@ gene_vars <- import_report(genes) %>%
 ## New data processing
 # add redcap gene codes
 vars <- vars %>% 
-    left_join(amr_genes, by=join_by(GENE==gene))
+    left_join(amr_genes, by=join_by(GENE==gene)) %>% 
+    filter(!(is.na(redcap_code))) %>% 
+    filter(Impact != "LOW")
 
 # extract sample IDs
 samples <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC")] %>%
@@ -72,26 +78,27 @@ samples <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC")] %>%
 # non-sample colnames
 gene_data <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC", negate = TRUE)]
 
-single_sample <- vars[,c(gene_data, paste0(samples[1], ".VAF"), paste0(samples[1], ".GT"))] %>% 
-    filter(get(paste0(samples[1],".VAF")) > 0.2)
-
-sample_name <- samples[1]
-
 ################################################################################
 ## Data upload 
 # For each strain, create new record and send form
 
+for(j in 29:length(samples)){
+  single_sample <- vars[,c(gene_data, paste0(samples[j], ".VAF"), paste0(samples[j], ".GT"))] %>% 
+    filter(get(paste0(samples[j],".VAF")) > 0.2)
+
+  sample_name <- samples[j]
+
 # primary vs secondary name
-if(sample_name %in% sample_info$secondary_id){
+  if(sample_name %in% sample_info$secondary_id){
     primary_id <- as.character(sample_info %>% 
                                    filter(secondary_id==sample_name) %>% 
                                    select(primary_id))
-}else{
+  }else{
     primary_id <- sample_name
-}
+  }
 
 
-for(i in 1:length(single_sample$POS)){
+  for(i in 1:length(single_sample$POS)){
     
     record <- c(
         primary_id = primary_id,
@@ -129,4 +136,5 @@ for(i in 1:length(single_sample$POS)){
     response <- httr::POST(api_url, body = formData, encode = "form")
     result <- httr::content(response)
     print(result)
+  }
 }
