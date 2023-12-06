@@ -13,17 +13,18 @@
 ## ---------------------------
 ## load packages
 library(tidyverse)
-library(RCurl)
+#library(RCurl)
 library(jsonlite)
 
 # spreadsheet of variants
-vars <- read_csv("Calbicans_MEC_bwa_filtered_annotated_amr.csv") 
+vars <- read_csv("Cglabrata_MEC_CGD_amr_genes.csv", show_col_types = FALSE)
+vars$POS <- as.character(vars$POS)
 vars <- vars %>% 
     mutate(across(where(is.numeric), ~num(., digits = 2)))
     
 
 amr_genes <- read_csv("redcap_gene_ids.csv")
-ref <- "SC5314 A21"
+ref <- "CBS138_s05m03r02"
 
 # api info
 api_token <- ""
@@ -82,7 +83,7 @@ gene_data <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC", negate = TRUE)
 ## Data upload 
 # For each strain, create new record and send form
 
-for(j in 29:length(samples)){
+for(j in 1:1){
   single_sample <- vars[,c(gene_data, paste0(samples[j], ".VAF"), paste0(samples[j], ".GT"))] %>% 
     filter(get(paste0(samples[j],".VAF")) > 0.2)
 
