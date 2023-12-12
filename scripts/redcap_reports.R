@@ -92,4 +92,5 @@ seq_info <- import_report(avail_seq_data) %>%
 # snp data
 gene_vars <- import_report(genes) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq)# %>%
+    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
+    left_join((sample_info %>% select(primary_id, genus_species)))
