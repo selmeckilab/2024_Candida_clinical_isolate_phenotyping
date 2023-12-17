@@ -16,8 +16,6 @@
 options(scipen = 999) # To view outputs in non-scientific notation
 ## ---------------------------
 ## load packages
-library(RCurl)
-#library(digest)
 library(jsonlite)
 ## ---------------------------
 ## Functions
@@ -29,10 +27,10 @@ api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 ## Drug and spreadsheet data
-input_drug <- "flc"
+input_drug <- "amb"
 replicates <- 3
-mic_spreadsheet <-"data/MIC/2023-11-07_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-11-08_EW_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"data/MIC/2023-12-12_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-12-13_EW_SMG48_RPMI35.xlsx"
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ## Type either "strain" or "concentration" for your column names

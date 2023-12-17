@@ -12,17 +12,13 @@
 ## ---------------------------
 ## load packages
 library(tidyverse)
-library(lubridate)
-#library(magrittr)
-library(writexl)
-#library(reshape2)
-library(RCurl)
 library(jsonlite)
+
 # redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
 
-token <- "" # don't forget to delete before gh
+token <- "" # no github
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 # add max concentration from MIC plates (below is standard MEC screening set-up)
@@ -70,7 +66,7 @@ eucast_mic$mic50 <- case_when(grepl(">", eucast_mic$mic50) ~ (as.numeric(sub("[^
 
 eucast_mic <- eucast_mic %>%
     filter(mic_media == "RPMI" & mic_temp=="35C") %>%
-    filter(mic_date %in% c(as.Date("2023-11-21"), as.Date("2023-11-22"))) %>%
+    filter(mic_date %in% c(as.Date("2023-12-12"), as.Date("2023-12-22"))) %>%
     group_by(genus_species) %>%
     mutate(eucast_breakpoint = case_when(drug!= "fluconazole" & genus_species %in% non_eucast_species ~ 3,
                                          drug == "fluconazole" & genus_species == "Candida krusei" ~ 4,
