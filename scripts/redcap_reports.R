@@ -23,8 +23,10 @@ chef_data <- '58046'
 spot_plates <- '58047'
 genes <- '58048'
 avail_seq_data <- '58050'
+calb_mlst <- '58053'
+cglab_mlst <- '58052'
 
-token <- "" # don't forget to delete before gh
+token <- '' # no gh
 
 # function to import report from redcap
 import_report <- function(report_number) {
@@ -94,3 +96,11 @@ gene_vars <- import_report(genes) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
     left_join((sample_info %>% select(primary_id, genus_species)))
+
+# mlst types
+albicans_sts <- import_report(calb_mlst) %>% 
+    select(primary_id, st, aat1a_exact_match, acc1_exact_match, adp1_exact_match,
+           mpib_exact_match, sya1_exact_match, vps13_exact_match, zwf1b_exact_match) %>% 
+    mutate(across(st:zwf1b_exact_match, as.character)) %>% 
+    mutate(concat_alleles=paste(aat1a_exact_match, acc1_exact_match, adp1_exact_match, mpib_exact_match, sya1_exact_match, vps13_exact_match, zwf1b_exact_match, sep = ""))
+
