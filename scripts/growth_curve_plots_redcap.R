@@ -24,8 +24,8 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-08-25_MEC_GC30.xlsx"
-plate_reader_sn <- "1803065"
+plate_reader_file <- "data/growth_curve/2023-12-20_MEC_GC30.xlsx"
+plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
@@ -88,8 +88,8 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
-spec <- "Candida albicans"
-ctrl <- "Candida lusitaniae" # or empty str if not plotting
+spec <- "Candida parapsilosis"
+ctrl <- "" # or empty str if not plotting
 full_plot <- gc_mean %>%
     filter(species == spec | species == ctrl) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
@@ -130,13 +130,14 @@ redcap_media <- case_when(toupper(sample_data$media[1])== "YPAD" ~ 1,
                          toupper(sample_data$media[1])== "RPMI" ~ 3)
 
 redcap_temp <- case_when(sample_data$temp[1]== 30 ~ 0,
-                         sample_data$temp[1] == 37 ~1)
+                         sample_data$temp[1] == 37 ~1,
+                         sample_data$temp[1] == 35 ~2)
 
 redcap_reader <- case_when(plate_reader_sn == "1803065" ~ 0,
                            plate_reader_sn == "23012423" ~ 1,
                            plate_reader_sn == "23012512" ~ 2,
                            plate_reader_sn == "151117B" ~ 3) 
-
+#
 for(i in 1:length(plate_summary$primary_id)){
     
     record <- c(
