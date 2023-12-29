@@ -1,11 +1,11 @@
 ## ---------------------------
-## Script name: series_report_api_data.R
+## Script name: redcap_species_plots.R
 ##
-## Purpose of script: Pull report CSVs  from REDCap for processing and plotting high-level overview
+## Purpose of script: MEC isolate distributions by species and category
 ##
 ## Author: Nancy Scott
 ##
-## Date Created: 2022-12-08
+## Date Created: 2023-11-28
 ##
 ## Email: scot0854@umn.edu
 ## ---------------------------

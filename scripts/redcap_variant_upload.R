@@ -1,11 +1,11 @@
 ## ---------------------------
-## Script name: series_report_api_data.R
+## Script name: redcap_variant_upload.R
 ##
-## Purpose of script: Pull report CSVs directly from REDCap for filtering and subsetting
+## Purpose of script: Upload gene variant records by API
 ##
 ## Author: Nancy Scott
 ##
-## Date Created: 2022-12-08
+## Date Created: 2023-12-04
 ##
 ## Email: scot0854@umn.edu
 ## ---------------------------
@@ -13,11 +13,10 @@
 ## ---------------------------
 ## load packages
 library(tidyverse)
-#library(RCurl)
 library(jsonlite)
 
 # spreadsheet of variants
-vars <- read_csv("Cglabrata_MEC_CGD_amr_genes.csv", show_col_types = FALSE)
+vars <- read_csv("Cglabrata_MEC_bwa_filtered_annotated.csv", show_col_types = FALSE)
 vars$POS <- as.character(vars$POS)
 vars <- vars %>% 
     mutate(across(where(is.numeric), ~num(., digits = 2)))
@@ -83,9 +82,9 @@ gene_data <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC", negate = TRUE)
 ## Data upload 
 # For each strain, create new record and send form
 
-for(j in 1:1){
+for(j in 1:length(samples)){
   single_sample <- vars[,c(gene_data, paste0(samples[j], ".VAF"), paste0(samples[j], ".GT"))] %>% 
-    filter(get(paste0(samples[j],".VAF")) > 0.2)
+    filter(get(paste0(samples[j],".VAF")) > 0.4)
 
   sample_name <- samples[j]
 
@@ -105,14 +104,14 @@ for(j in 1:1){
         primary_id = primary_id,
         redcap_repeat_instrument = "variants_of_interest",
         redcap_repeat_instance = "new",
-        gene = single_sample$code[i],
+        gene = single_sample$redcap_code[i],
         snp_ref_genome = ref,
-        locus_tag = single_sample$Gene_Name[i],
+        locus_tag = single_sample$LOCUS[i],
         snp_chromosome = single_sample$CHROM[i],
         snp_pos = single_sample$POS[i],
         snp_ref = single_sample$REF[i],
         snp_alt = single_sample$ALT[i],
-        alt_freq = as.character(single_sample[i, paste0(sample_name,".VAF")]),
+        alt_freq = substr(as.character(single_sample[i, paste0(sample_name,".VAF")]),1,4),
         predicted_change = single_sample$Impact[i],
         coding_change = single_sample$Coding_Change[i],
         protein_change = single_sample$AA_change[i],

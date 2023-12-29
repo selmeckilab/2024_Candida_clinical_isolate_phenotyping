@@ -1,7 +1,7 @@
 ## ---------------------------
-## Script name: MEC_gc_summary.R
+## Script name: growth_curve_plots_redcap.R
 ##
-## Purpose of script: use growthcurver for gc metric calculation 
+## Purpose of script: get growthcurve summaries and make basic GC plots 
 ##
 ## Author: Nancy Scott
 ##

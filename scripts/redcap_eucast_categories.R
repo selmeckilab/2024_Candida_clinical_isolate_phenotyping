@@ -1,7 +1,8 @@
 ## ---------------------------
-## Script name: redcap_eucast_calcs_api.R
+## Script name: redcap_eucast_categories.R
 ##
-## Purpose of script: Pull report CSVs and determine eucast categories when applicable
+## Purpose of script: Pull MICs and determine eucast categories 
+##
 ## Author: Nancy Scott
 ##
 ## Date Created: 2023-09-06

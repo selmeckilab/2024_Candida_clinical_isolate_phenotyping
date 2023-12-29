@@ -1,11 +1,11 @@
 ## ---------------------------
-## Script name: redcap_reports.R
+## Script name: redcap_resistance_data.R
 ##
-## Purpose of script: Pull, filter, subset REDCap reports
+## Purpose of script: Pull REDCap reports to analyze MIC and gene variants
 ##
 ## Author: Nancy Scott
 ##
-## Date Created: 2023-11-28
+## Date Created: 2023-12-28
 ##
 ## Email: scot0854@umn.edu
 ## ---------------------------
@@ -18,11 +18,7 @@ library(writexl)
 # redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
-growth_curves <- '58045'
-chef_data <- '58046'
-spot_plates <- '58047'
 genes <- '58048'
-avail_seq_data <- '58050'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
@@ -51,22 +47,6 @@ sample_info <- import_report(samples) %>%
     filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
-# CHEF gel results
-chef_done <- import_report(chef_data) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gel_date, blot_prepared) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("gel_date", "blot_prepared"),
-                names_vary = "slowest")
-
-# No CHEF results yet
-todo <- sample_info %>%
-    filter(isolate_type == "clinical") %>%
-    anti_join(chef_done)
-
-# export chef-todo
-#write_xlsx(todo,paste0(Sys.Date(),"_CHEF_todo.xlsx"))
-
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
@@ -77,19 +57,6 @@ mic_info <- import_report(mic_results) %>%
 mic_to_do <- sample_info %>% 
     filter(isolate_type == "clinical") %>%
     anti_join(mic_info)
-
-# growth curve results
-gc <- import_report(growth_curves) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gc_date, drug_used, gc_temp, gc_time, k, r, t_gen, auc_l)
-
-# MSI location if sequencing data exists
-seq_info <- import_report(avail_seq_data) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, msi_path_r1, msi_path_r2, msi_long_read_path) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("msi_path_r1", "msi_path_r2", "msi_long_read_path"),
-                names_vary = "slowest")
 
 # snp data
 gene_vars <- import_report(genes) %>%
@@ -104,3 +71,26 @@ albicans_sts <- import_report(calb_mlst) %>%
     mutate(across(st:zwf1b_exact_match, as.character)) %>% 
     mutate(concat_alleles=paste(aat1a_exact_match, acc1_exact_match, adp1_exact_match, mpib_exact_match, sya1_exact_match, vps13_exact_match, zwf1b_exact_match, sep = ""))
 
+flc_smg <- mic_info %>% filter(drug=="fluconazole", smg > 0.3)
+
+mcf_res <- mic_info %>% filter(drug=="micafungin", eucast_breakpoint=="R")
+mcf_sensitive <- mic_info %>% filter(drug=="micafungin", eucast_breakpoint=="S", genus_species=="Candida glabrata")
+glabrata_vars <- gene_vars %>% filter(genus_species=="Candida glabrata")
+glab_mcf <- mic_info %>% filter(genus_species=="Candida glabrata", drug=="micafungin")
+mcf_res_vars <- glabrata_vars %>% filter(primary_id %in% mcf_res$primary_id) %>% select(gene, protein_change)
+mcf_sens_vars <- glabrata_vars %>% filter(primary_id %in% mcf_sensitive$primary_id) %>% select(gene, protein_change)
+possible_mcf <- mcf_res_vars %>% anti_join(mcf_sens_vars)
+
+
+glab_flc <- mic_info %>% filter(genus_species=="Candida glabrata", drug=="fluconazole", !(is.na(eucast_breakpoint)))
+flc_res <- glab_flc %>% filter(eucast_breakpoint=="R")
+flc_int <- glab_flc %>% filter(eucast_breakpoint=="I")
+flc_sens_vars <- glabrata_vars %>% filter(primary_id %in% flc_int$primary_id) %>% select(gene, protein_change)
+flc_res_vars <- glabrata_vars %>% filter(primary_id %in% flc_res$primary_id) %>% select(gene, protein_change)
+possible_flc <- flc_res_vars %>% anti_join(flc_sens_vars)
+
+possible_mcf <- unique(mcf_res_vars %>% anti_join(mcf_sens_vars))
+possible_flc <- unique(flc_res_vars %>% anti_join(flc_sens_vars))
+
+multi_res_vars <- glabrata_vars %>% filter(primary_id %in% mcf_res$primary_id, primary_id %in% flc_res$primary_id) %>% select(gene, protein_change)
+possible_multi <- unique(multi_res_vars %>% anti_join(mcf_sens_vars)) %>% anti_join(flc_sens_vars)

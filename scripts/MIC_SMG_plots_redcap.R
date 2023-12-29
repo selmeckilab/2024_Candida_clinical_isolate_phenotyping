@@ -1,5 +1,5 @@
 ## ---------------------------
-## Script name: clin_isolate_MIC_SMG_meta.R
+## Script name: MIC_SMG_plots_redcap.R
 ##
 ## Purpose of script: Calculate, plot and upload MIC and SMG data
 ##
