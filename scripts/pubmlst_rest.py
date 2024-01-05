@@ -76,7 +76,7 @@ def main():
     isolate_seqs = isolate_st_query(isolate_st_params)
 
     # start dict
-    isolate_data = {'mec_id' : args.file.split("_")[0]}
+    isolate_data = {'primary_id' : args.file.removesuffix("_mlst.fa")}
     isolate_data['typing_scheme'] = '0'
     isolate_data['st_ref_genome'] = args.ref_genome
     if 'fields' in isolate_seqs:
@@ -125,7 +125,7 @@ def main():
         'returnFormat': 'json'
     }
     r = requests.post('https://redcap.ahc.umn.edu/api/',data=fields)
-    print(isolate_data['mec_id'] + ' HTTP Status: ' + " " + str(r.status_code), file=sys.stderr)
+    print(isolate_data['primary_id'] + ' HTTP Status: ' + " " + str(r.status_code), file=sys.stderr)
     print(r.json(), file=sys.stderr)
 
 
