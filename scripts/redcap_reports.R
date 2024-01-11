@@ -102,5 +102,9 @@ albicans_sts <- import_report(calb_mlst) %>%
     select(primary_id, st, aat1a_exact_match, acc1_exact_match, adp1_exact_match,
            mpib_exact_match, sya1_exact_match, vps13_exact_match, zwf1b_exact_match) %>% 
     mutate(across(st:zwf1b_exact_match, as.character)) %>% 
-    mutate(concat_alleles=paste(aat1a_exact_match, acc1_exact_match, adp1_exact_match, mpib_exact_match, sya1_exact_match, vps13_exact_match, zwf1b_exact_match, sep = ""))
+    mutate(concat_alleles=paste(aat1a_exact_match, acc1_exact_match, 
+                                adp1_exact_match, mpib_exact_match, 
+                                sya1_exact_match, vps13_exact_match, 
+                                zwf1b_exact_match, sep = "")) %>% 
+    mutate(st = case_when(is.na(st) ~ concat_alleles, .default = st))
 
