@@ -141,11 +141,11 @@ category_counts <- sample_info %>%
 # dataset is reshaped from wide to long using melt
 viz_categories <- ggplot(category_counts, aes(x=genus_species, 
                                               y=counts, 
-                                              fill=factor(Category, levels = c("neither_sum", "both_sum", "cluster_sum", "series_sum")))) + 
+                                              fill=factor(Category, levels = c("neither_sum", "cluster_sum", "both_sum", "series_sum")))) + 
     geom_bar(stat="identity") +
     scale_x_discrete(limits=unique(category_counts$genus_species)) +
     scale_fill_manual(values = c("#EECC66", "#EE99AA", "#6699CC", "#004488"),
-                      labels = c("Single", "Cluster + series", "Cluster", "Series")) +
+                      labels = c("Single", "Demographic Cluster", "Cluster + series", "Series")) +
     xlab("Species") +
     ylab("Count of isolates") +
     labs(fill="Category") +
@@ -162,4 +162,4 @@ viz_categories <- ggplot(category_counts, aes(x=genus_species,
     
 ggsave("images/2022_Candida_patient_categories.png", viz_categories,
        device = png, dpi=300, bg="white",
-       width = 7, height = 5, units = "in")
+       width = 7.2, height = 5, units = "in")
