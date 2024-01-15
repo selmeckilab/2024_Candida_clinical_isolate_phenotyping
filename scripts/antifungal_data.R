@@ -18,7 +18,7 @@ library(writexl)
 library(patchwork)
 
 # local antifungal data
-af_spreadsheet <- "antifungal_relative_days_by_sample.xlsx"
+af_spreadsheet <- "data/metadata/MEC_antifungal_history.xlsx"
 breakpoint_file <- "Candida_eucast_breakpoints.xlsx"
 
 # redcap report IDs
@@ -61,7 +61,8 @@ sample_info <- import_report(samples) %>%
 gene_vars <- import_report(genes) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
-    left_join((sample_info %>% select(primary_id, genus_species)))
+    left_join((sample_info %>% select(primary_id, genus_species))) %>% 
+    unite("gene_pos", gene:protein_change)
 
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
@@ -104,7 +105,7 @@ amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
     xlab("\nMIC") +
-    ylab("Amphotericin B\n") +
+    ylab("\nAmphotericin B\n") +
     #ylab(NULL) +
     theme(strip.text = element_blank())+
     theme(axis.text.x = element_text(angle=90, vjust=-0.5)) +
@@ -123,9 +124,9 @@ mcf <- ggplot(mic_info %>% filter(drug=="micafungin"), aes(x=mic50)) +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
     xlab(NULL)+
-    ylab("Micafungin\nNumber of isolates")+
+    ylab("Number of isolates\nMicafungin\n")+
     theme(strip.text = element_blank()) +
-    theme(axis.text.x = element_text(angle=90, vjust = 0.5)) +
+    theme(axis.text.x = element_text(angle=90, vjust = -0.4)) +
     theme(panel.grid.major.x = element_blank()) + 
     geom_vline(data=filter(mic_info, genus_species=="Candida albicans"), 
                aes(xintercept = "0.016"),linetype = 2) +
@@ -142,10 +143,10 @@ flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) +
     xlab(NULL)+
     #ylab(NULL)+
     #xlab("MIC50") +
-    ylab("Fluconazole\n") +
+    ylab("\nFluconazole\n") +
     theme(strip.text = element_text(face = "italic"))+
     theme(panel.grid.major.x = element_blank()) + 
-    theme(axis.text.x = element_text(angle=90, vjust = -0.5)) +
+    theme(axis.text.x = element_text(angle=90, vjust = -0.3)) +
     geom_vline(data=filter(mic_info, genus_species %in% c("Candida albicans", 
                                                           "Candida lusitaniae", 
                                                           "Candida parapsilosis",
@@ -153,12 +154,13 @@ flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) +
                                                           "Candida dubliniensis",
                                                           "Candida kefyr", 
                                                           "Candida nivariensis",
-                                                          "Candida orthopsilosis")), 
+                                                          "Candida orthopsilosis",
+                                                          "Candida utilis")), 
                aes(xintercept = "4"), linetype =2) +
     geom_vline(data = filter(mic_info, genus_species=="Candida glabrata"),
                aes(xintercept = "16"), linetype = 2)
 
-stack <- flc/mcf/amb
+stack_plot <- flc/mcf/amb
 
 ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_MIC_summary.png"),
        stack,
@@ -186,7 +188,7 @@ smg <- ggplot(mic_info, aes(x=genus_species, y=smg)) +
                                      face="italic", 
                                      hjust = 1, 
                                      vjust = 1)) +
-    xlab("SMG by species") +
+    xlab("Species") +
     ylab("SMG")
 
 ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_SMG_summary.png"),
@@ -199,48 +201,31 @@ ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_SMG_summary.png"),
        units="in")
 
 ################################################################################
-# Resistance/variant data wrangling
-
-# Filter C. glabrata data for resistant isolates and resistant-only SNPs
-mcf_res <- mic_info %>% filter(drug=="micafungin", eucast_breakpoint=="R")
-mcf_sensitive <- mic_info %>% filter(drug=="micafungin", eucast_breakpoint=="S", genus_species=="Candida glabrata")
-
-glabrata_vars <- gene_vars %>% filter(genus_species=="Candida glabrata")
-
-glab_mcf <- mic_info %>% filter(genus_species=="Candida glabrata", drug=="micafungin")
-mcf_res_vars <- glabrata_vars %>% filter(primary_id %in% mcf_res$primary_id) %>% select(gene, protein_change)
-mcf_sens_vars <- glabrata_vars %>% filter(primary_id %in% mcf_sensitive$primary_id) %>% select(gene, protein_change)
-possible_mcf <- mcf_res_vars %>% anti_join(mcf_sens_vars)
-
-glab_flc <- mic_info %>% filter(genus_species=="Candida glabrata", drug=="fluconazole", !(is.na(eucast_breakpoint)))
-flc_res <- glab_flc %>% filter(eucast_breakpoint=="R")
-flc_int <- glab_flc %>% filter(eucast_breakpoint=="I")
-flc_sens_vars <- glabrata_vars %>% filter(primary_id %in% flc_int$primary_id) %>% select(gene, protein_change)
-flc_res_vars <- glabrata_vars %>% filter(primary_id %in% flc_res$primary_id) %>% select(gene, protein_change)
-
-possible_mcf <- unique(mcf_res_vars %>% anti_join(mcf_sens_vars))
-possible_mcf_joined <- gene_vars %>% inner_join(possible_mcf)
-
-possible_flc <- flc_res_vars %>% anti_join(flc_sens_vars) 
-possible_flc <- unique(flc_res_vars %>% anti_join(flc_sens_vars))
-possible_flc_joined <- gene_vars %>% inner_join(possible_flc)
-
-multi_res_vars <- glabrata_vars %>% filter(primary_id %in% mcf_res$primary_id, primary_id %in% flc_res$primary_id) %>% select(gene, protein_change)
-possible_multi <- unique(multi_res_vars %>% anti_join(mcf_sens_vars)) %>% anti_join(flc_sens_vars)
-possible_multi_joined <- gene_vars %>% inner_join(possible_multi)
-################################################################################
 # Drug exposure data
 
 # Process de-identified antifungal relative timeframe data
 antifungals <- read_xlsx(af_spreadsheet)
-antifungals <- antifungals %>% 
-    inner_join((sample_info %>% 
-                    select(primary_id, genus_species, series_id, relative_days)), 
-               by=join_by(sample==primary_id))
+#antifungals <- antifungals %>% 
+#    inner_join((sample_info %>% 
+#                    select(primary_id, genus_species, series_id, relative_days)), 
+#               by=join_by(sample==primary_id))
 
 remote_exposure <- antifungals %>% 
     #group_by(series_id) %>% 
-    filter(relative_start < -1, relative_days == 0)
+    filter(relative_start_days < -1, relative_collection_day == 0)
 
 no_results <- sample_info %>% filter(!(primary_id %in% antifungals$sample)) %>% 
     select(primary_id, genus_species, relative_days, series_id, secondary_id)
+
+################################################################################
+# Resistance/variant data wrangling
+
+resistant_isolates <- mic_info %>% 
+    group_by(drug, genus_species) %>% 
+    filter(eucast_breakpoint=="R")
+
+non_driver_vars <- gene_vars %>% 
+    filter(!primary_id %in% resistant_isolates$primary_id)
+
+possible_drivers <- gene_vars %>% 
+    filter(!gene_pos %in% non_driver_vars$gene_pos)
