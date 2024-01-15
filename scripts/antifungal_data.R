@@ -98,6 +98,47 @@ mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.
 mic_info$genus_species <- factor(mic_info$genus_species, levels = species_count$genus_species)
 
 # Plot MIC and SMG per species per drug.
+flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) + 
+    geom_bar(aes(fill=genus_species), just = 1) +
+    scale_fill_manual(values=species_colors, guide = "none") +
+    facet_wrap(.~genus_species, nrow = 1)+
+    theme_bw() +
+    xlab(NULL)+
+    #ylab(NULL)+
+    #xlab("MIC50") +
+    ylab("\nFluconazole\n") +
+    theme(strip.text = element_text(face = "italic", size =8))+
+    theme(panel.grid.major.x = element_blank()) + 
+    theme(axis.text.x = element_text(angle=90, vjust = -0.3)) +
+    geom_vline(data=filter(mic_info, genus_species %in% c("Candida albicans", 
+                                                          "Candida lusitaniae", 
+                                                          "Candida parapsilosis",
+                                                          "Candida tropicalis", 
+                                                          "Candida dubliniensis",
+                                                          "Candida kefyr", 
+                                                          "Candida nivariensis",
+                                                          "Candida orthopsilosis",
+                                                          "Candida utilis")), 
+               aes(xintercept = "4"), linetype =2) +
+    geom_vline(data = filter(mic_info, genus_species=="Candida glabrata"),
+               aes(xintercept = "16"), linetype = 2)
+
+mcf <- ggplot(mic_info %>% filter(drug=="micafungin"), aes(x=mic50)) + 
+    geom_bar(aes(fill=genus_species), just = 1) +
+    scale_fill_manual(values=species_colors, guide = "none") +
+    facet_wrap(.~genus_species, nrow = 1)+
+    theme_bw() +
+    xlab(NULL)+
+    ylab("Number of isolates\nMicafungin\n")+
+    theme(strip.text = element_blank()) +
+    theme(axis.text.x = element_text(angle=90, vjust = -0.4)) +
+    theme(panel.grid.major.x = element_blank()) + 
+    geom_vline(data=filter(mic_info, genus_species=="Candida albicans"), 
+               aes(xintercept = "0.016"),linetype = 2) +
+    geom_vline(data = filter(mic_info, genus_species=="Candida glabrata"),
+               aes(xintercept = "0.032"), linetype = 2) +
+    geom_vline(data = filter(mic_info, genus_species=="Candida parapsilosis"),
+               aes(xintercept = "2"), linetype = 2) 
 
 amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) + 
     geom_bar(aes(fill=genus_species), just = 1) +
@@ -118,57 +159,15 @@ amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) +
                                                           "Candida dubliniensis")), 
                aes(xintercept = "1"), linetype =2)
 
-mcf <- ggplot(mic_info %>% filter(drug=="micafungin"), aes(x=mic50)) + 
-    geom_bar(aes(fill=genus_species), just = 1) +
-    scale_fill_manual(values=species_colors, guide = "none") +
-    facet_wrap(.~genus_species, nrow = 1)+
-    theme_bw() +
-    xlab(NULL)+
-    ylab("Number of isolates\nMicafungin\n")+
-    theme(strip.text = element_blank()) +
-    theme(axis.text.x = element_text(angle=90, vjust = -0.4)) +
-    theme(panel.grid.major.x = element_blank()) + 
-    geom_vline(data=filter(mic_info, genus_species=="Candida albicans"), 
-               aes(xintercept = "0.016"),linetype = 2) +
-    geom_vline(data = filter(mic_info, genus_species=="Candida glabrata"),
-               aes(xintercept = "0.032"), linetype = 2) +
-    geom_vline(data = filter(mic_info, genus_species=="Candida parapsilosis"),
-               aes(xintercept = "2"), linetype = 2) 
-
-flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) + 
-    geom_bar(aes(fill=genus_species), just = 1) +
-    scale_fill_manual(values=species_colors, guide = "none") +
-    facet_wrap(.~genus_species, nrow = 1)+
-    theme_bw() +
-    xlab(NULL)+
-    #ylab(NULL)+
-    #xlab("MIC50") +
-    ylab("\nFluconazole\n") +
-    theme(strip.text = element_text(face = "italic"))+
-    theme(panel.grid.major.x = element_blank()) + 
-    theme(axis.text.x = element_text(angle=90, vjust = -0.3)) +
-    geom_vline(data=filter(mic_info, genus_species %in% c("Candida albicans", 
-                                                          "Candida lusitaniae", 
-                                                          "Candida parapsilosis",
-                                                          "Candida tropicalis", 
-                                                          "Candida dubliniensis",
-                                                          "Candida kefyr", 
-                                                          "Candida nivariensis",
-                                                          "Candida orthopsilosis",
-                                                          "Candida utilis")), 
-               aes(xintercept = "4"), linetype =2) +
-    geom_vline(data = filter(mic_info, genus_species=="Candida glabrata"),
-               aes(xintercept = "16"), linetype = 2)
-
 stack_plot <- flc/mcf/amb
 
 ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_MIC_summary.png"),
-       stack,
+       stack_plot,
        device=png, 
        bg="white", 
        dpi=300, 
-       width=11.5, 
-       height = 7, 
+       width=12.5, 
+       height = 7.5, 
        units = "in")
 
 smg <- ggplot(mic_info, aes(x=genus_species, y=smg)) + 
@@ -214,7 +213,7 @@ remote_exposure <- antifungals %>%
     #group_by(series_id) %>% 
     filter(relative_start_days < -1, relative_collection_day == 0)
 
-no_results <- sample_info %>% filter(!(primary_id %in% antifungals$sample)) %>% 
+no_results <- sample_info %>% filter(!(primary_id %in% antifungals$primary_id)) %>% 
     select(primary_id, genus_species, relative_days, series_id, secondary_id)
 
 ################################################################################
@@ -223,6 +222,11 @@ no_results <- sample_info %>% filter(!(primary_id %in% antifungals$sample)) %>%
 resistant_isolates <- mic_info %>% 
     group_by(drug, genus_species) %>% 
     filter(eucast_breakpoint=="R")
+
+res_summary <- resistant_isolates %>% 
+    group_by(drug, genus_species) %>%
+    count(series_id)
+
 
 non_driver_vars <- gene_vars %>% 
     filter(!primary_id %in% resistant_isolates$primary_id)
