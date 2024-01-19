@@ -13,9 +13,9 @@
 set -ue
 set -o pipefail
 
-module load python/3.10.9_anaconda2023.03_libmamba
+module use ~/modulefiles.local
 
-source ~/software.install/py_venv/mlst/bin/activate
+module load mlst
 
 species=cglabrata
 ref_genome=CBS138_ASM254v2
