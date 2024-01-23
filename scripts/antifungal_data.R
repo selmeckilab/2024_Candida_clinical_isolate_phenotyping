@@ -87,10 +87,10 @@ species_count <- sample_info %>%
 species_colors <- species_colors %>% 
     set_names(species_count$genus_species)
 
-drugs <- as_labeller(c(`amphotericin B` = "Amphotericin B", 
-                       fluconazole="Fluconazole", 
-                       micafungin="Micafungin"))
-
+drugs <- as_labeller(c(fluconazole="Fluconazole", 
+                       micafungin="Micafungin",
+                       `amphotericin B` = "Amphotericin B"))
+ 
 mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.125",
                                                   "0.256", "0.5", "1", ">1", "2", 
                                                   "4", "8", "16", "32", ">32"))
@@ -180,7 +180,7 @@ smg <- ggplot(mic_info, aes(x=genus_species, y=smg)) +
                  stackdir = "center", 
                  color = "grey36", 
                  fill="grey36") + 
-    facet_grid(drug ~ ., labeller = drugs) +
+    facet_grid(factor(drug, levels=c("fluconazole", "micafungin", "amphotericin B")) ~ ., labeller = drugs) +
     theme_bw() +
     scale_fill_manual(values=species_colors, guide = "none") +
     theme(axis.text.x = element_text(angle = 30, 
