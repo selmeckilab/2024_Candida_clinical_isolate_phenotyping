@@ -13,7 +13,7 @@
 ## OD readings are read from one sheet and pivoted to "long" format, 
 ## metadata in long format is read from another sheet and concatenated
 ## ---------------------------
-options(scipen = 999) # To view outputs in non-scientific notation
+options(scipen = 999)
 ## ---------------------------
 ## load packages
 library(jsonlite)
@@ -27,10 +27,10 @@ api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 ## Drug and spreadsheet data
-input_drug <- "amb"
+input_drug <- "flc"
 replicates <- 3
-mic_spreadsheet <-"data/MIC/2023-12-12_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-12-13_EW_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"data/MIC/2024-01-17_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2024-01-12_EW_SMG48_RPMI35.xlsx"
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ## Type either "strain" or "concentration" for your column names
@@ -187,9 +187,8 @@ drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
 drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     theme(axis.text.y = element_blank(),
           axis.text.x = element_text(),
-         plot.margin = unit(c(0,0.5,0.5,0), "cm"),
-          axis.title.x = element_text(lineheight = 1.2)) +
-    scale_x_continuous(limits = c(0,1), breaks = c(0, 0.5, 1), labels = c("0", "", "1")) +
+         plot.margin = unit(c(0,0.5,0.5,0), "cm"))+#,
+          #axis.title.x = element_text(lineheight = 1.1)) +
     xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
          .default = "SMG")) 
     
