@@ -27,10 +27,10 @@ api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 ## Drug and spreadsheet data
-input_drug <- "flc"
+input_drug <- "mcf"
 replicates <- 3
 mic_spreadsheet <-"data/MIC/2024-01-17_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2024-01-12_EW_SMG48_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2024-01-18_EW_SMG48_RPMI35.xlsx"
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ## Type either "strain" or "concentration" for your column names
@@ -41,10 +41,11 @@ concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32)
                            toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1))
 
 ## FOR SPECIFIC ORDER: put IDs in "strains" vector. Otherwise leave commented out.
-#strain_list <- c("AMS5123", "MEC245", "MEC259", "MEC260", "MEC262","MEC264", "MEC265",  "MEC286", "MEC290", "MEC291")
+strain_list <- c("AMS5123", "MEC257", "MEC208", "MEC205", "MEC194", "MEC190", "MEC188", "MEC176", "MEC175")
 
-## TO SKIP STRAINS IN PLOT: need strain_list above with wanted strains plus IDs in "exclude" vector. Otherwise leave commented out.
-#exclude <- c("MEC285","MEC261")
+## TO SKIP STRAINS IN PLOT: 
+#  Need strain_list above with wanted strains plus IDs to skip in "exclude" vector. Otherwise leave commented out.
+exclude <- c("MEC174", "MEC185", "MEC196")
 
 ## Add control IDs
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
@@ -69,9 +70,10 @@ cutoff <- case_when(meta.frame$drug[1] == "FLC" ~ 0.5,
 
 max_concentration <- max(meta.frame$concentration, na.rm = TRUE)
 
-x_axis_angle <- case_when(meta.frame$drug[1]== "FLC" ~ 0,
-                          meta.frame$drug[1] == "MCF" ~ 90,
-                          meta.frame$drug[1] == "AMB" ~ 90)
+#x_axis_angle <- case_when(meta.frame$drug[1]== "FLC" ~ 0,
+#                          meta.frame$drug[1] == "MCF" ~ 90,
+#                          meta.frame$drug[1] == "AMB" ~ 90)
+x_axis_angle <- 0
 
 ################################################################################
 ## MIC
@@ -176,8 +178,9 @@ drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff, strains)
 
 ## Make the "heatmap"
 drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
-        xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
-             .default = paste(drug$drug[1], " MIC"))) +
+        #xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
+         #    .default = paste(drug$drug[1], " MIC"))) +
+        xlab(paste(drug$drug[1], " MIC")) +
         theme(axis.text.x = element_text(angle = x_axis_angle),
           plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
           axis.title.y = element_text(hjust = 0.5,
@@ -189,8 +192,9 @@ drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
           axis.text.x = element_text(),
          plot.margin = unit(c(0,0.5,0.5,0), "cm"))+#,
           #axis.title.x = element_text(lineheight = 1.1)) +
-    xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
-         .default = "SMG")) 
+    #xlab(case_when(drug$drug[1] %in% c("AMB", "MCF")~ paste("\n\n","SMG"),
+         #.default = "SMG")) 
+    xlab("SMG")
     
 ## Pull together with patchwork
 drug_full_plot <- (drug_mic_plot + drug_smg_plot) + plot_layout(guides = 'collect')
@@ -198,7 +202,7 @@ drug_full_plot <- (drug_mic_plot + drug_smg_plot) + plot_layout(guides = 'collec
 ## Save as desired
 ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"), 
        drug_full_plot, 
-       width = 6, 
+       width = 7.3, 
        height = 8, 
        units = "in", 
        device = png, 

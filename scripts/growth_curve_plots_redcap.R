@@ -15,8 +15,6 @@
 options(scipen = 999) # To view outputs in non-scientific notation
 ## ---------------------------
 ## load packages
-#library(RCurl)
-#library(digest)
 library(jsonlite)
 library(paletteer)
 ################################################################################
@@ -24,7 +22,7 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2023-12-20_MEC_GC30.xlsx"
+plate_reader_file <- "data/growth_curve/2024-01-18_MEC_GC30.xlsx"
 plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
@@ -88,7 +86,7 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
-spec <- "Candida parapsilosis"
+spec <- "Candida albicans"
 ctrl <- "" # or empty str if not plotting
 full_plot <- gc_mean %>%
     filter(species == spec | species == ctrl) %>%
@@ -117,7 +115,7 @@ facet_plot <- gc_mean %>%
     scale_y_continuous(breaks = c(0,0.5,1.0,1.5)) +
     scale_x_continuous(breaks = c(0, 12, 24, 36, 48),
                        labels = c ("0", "12", "24", "36", "48")) +
-    scale_color_manual(values = c("#0077bb", "#ee7733", "#8c8c8c","#33bbee", "#cc3311", "#59A14FFF"))+
+    scale_color_manual(values = c("#0077bb", "#ee7733", "#8c8c8c","#33bbee", "#cc3311", "#59A14FFF", "#CDB38B"))+
     xlab("Time (hours)") +
     ylab("Mean OD600") +
     labs(colour = "Species", title = "Growth in YPAD at 30C")
