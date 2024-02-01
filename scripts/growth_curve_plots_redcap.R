@@ -12,7 +12,7 @@
 ## Notes: Adapted from C. lusitaniae growth curve scripts
 ##   
 ## ---------------------------
-options(scipen = 999) # To view outputs in non-scientific notation
+options(scipen = 999) 
 ## ---------------------------
 ## load packages
 library(jsonlite)
@@ -22,7 +22,7 @@ library(paletteer)
 source("~/umn/growth_curves/gc_functions.R")
 ###############################################################################
 ## Input vars
-plate_reader_file <- "data/growth_curve/2024-01-18_MEC_GC30.xlsx"
+plate_reader_file <- "data/growth_curve/2024-01-24_MEC_GC30.xlsx"
 plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
@@ -86,10 +86,10 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
-spec <- "Candida albicans"
+spec <- c("Candida glabrata")
 ctrl <- "" # or empty str if not plotting
 full_plot <- gc_mean %>%
-    filter(species == spec | species == ctrl) %>%
+    filter(species %in% spec | species == ctrl) %>%
     ggplot(aes(x = time, y = mean_OD, color = primary_id)) +
     geom_point() +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
