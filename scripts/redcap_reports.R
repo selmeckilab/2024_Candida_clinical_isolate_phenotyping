@@ -20,13 +20,12 @@ samples <- '58043'
 mic_results <- '58044'
 growth_curves <- '58045'
 chef_data <- '58046'
-spot_plates <- '58047'
 genes <- '58048'
 avail_seq_data <- '58050'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
-token <- '' # no gh
+token <- '' 
 
 # function to import report from redcap
 import_report <- function(report_number) {
@@ -69,7 +68,7 @@ todo <- sample_info %>%
 
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
+    filter(redcap_repeat_instrument != "NA", mic_media == "RPMI") %>%
     select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
     left_join((sample_info %>% select(primary_id, genus_species, series_id)), by=join_by(primary_id)) 
 

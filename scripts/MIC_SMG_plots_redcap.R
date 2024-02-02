@@ -18,40 +18,40 @@ options(scipen = 999)
 ## load packages
 library(jsonlite)
 ## ---------------------------
-## Functions
+# Functions
 source("~/umn/mic_data/scripts/MIC_calc_functions.R")
 source("~/umn/mic_data/scripts/MIC_heatmap.R")
 
-## For automatic uploading to REDcap
+# For automatic uploading to REDcap
 api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
-## Drug and spreadsheet data
-input_drug <- "mcf"
+# Drug and spreadsheet data
+input_drug <- "flc"
 replicates <- 3
-mic_spreadsheet <-"data/MIC/2024-01-17_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2024-01-18_EW_SMG48_RPMI35.xlsx"
-mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
+mic_spreadsheet <-"data/MIC/2024-01-25_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2024-01-26_EW_SMG48_RPMI35.xlsx"
 
-## Type either "strain" or "concentration" for your column names
+# Type either "strain" or "concentration" for your column names
 column_names <- "strain"
 
-## Drug concentrations (this assumes the usual "screening" set-up, change as needed)
+# FOR SPECIFIC ORDER: put IDs in "strains" vector. Otherwise leave commented out.
+#strain_list <- c("AMS5123", "MEC257", "MEC208", "MEC205", "MEC194", "MEC190", "MEC188", "MEC176", "MEC175")
+
+# TO SKIP STRAINS IN PLOT: 
+# Need strain_list above with wanted strains plus IDs to skip in "exclude" vector. Otherwise leave commented out.
+#exclude <- c("MEC174", "MEC185", "MEC196")
+
+# Add control IDs
+control_strains <- c("AMS5123", "AMS5122", "AMS2401")
+
+# Drug concentrations (this assumes the usual "screening" set-up, change as needed)
 concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32),
                            toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1))
 
-## FOR SPECIFIC ORDER: put IDs in "strains" vector. Otherwise leave commented out.
-strain_list <- c("AMS5123", "MEC257", "MEC208", "MEC205", "MEC194", "MEC190", "MEC188", "MEC176", "MEC175")
-
-## TO SKIP STRAINS IN PLOT: 
-#  Need strain_list above with wanted strains plus IDs to skip in "exclude" vector. Otherwise leave commented out.
-exclude <- c("MEC174", "MEC185", "MEC196")
-
-## Add control IDs
-control_strains <- c("AMS5123", "AMS5122", "AMS2401")
-
+mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 ################################################################################
-## Load metadata - specify which tab it is (usually 2) and add vals from above
+# Load metadata - specify which tab it is (usually 2) and add vals from above
 meta.frame <- read_excel(mic_spreadsheet, 
                          sheet = 2)
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=12-length(input_drug)))
@@ -76,20 +76,20 @@ max_concentration <- max(meta.frame$concentration, na.rm = TRUE)
 x_axis_angle <- 0
 
 ################################################################################
-## MIC
-## Loop over each plate
+# MIC
+# Loop over each plate
 for(i in 1:replicates){
   d.frame <- read_excel(mic_spreadsheet, 
                        range = meta.frame[[tolower(input_drug)]][i])
   
-  ## Colnames set from input variable 
+  # Colnames set from input variable 
   colnames(d.frame) <- as.character(pull(meta.frame,column_names))
   
-  ## Add (strain or concentration) not used as column names as a new column
+  # Add (strain or concentration) not used as column names as a new column
   if(!all(colnames(d.frame) == meta.frame$strain)) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
   if(!all(colnames(d.frame) == meta.frame$concentration)) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
   
-  ## Add remaining metadata 
+  # Add remaining metadata 
   d.frame <- d.frame %>%
     add_column(plate = i) %>%
     add_column(drug = meta.frame$drug[!is.na(meta.frame$drug)]) %>%
@@ -99,15 +99,15 @@ for(i in 1:replicates){
   assign(paste0("rep", i), d.frame)
 }
 
-## Pull together and tidy data
+# Pull together and tidy data
 drug_data <- bind_rows(mget(ls(pattern = "^rep\\d+$")))
 drug <- pivot_longer(drug_data, 
                     names_to = meta_names,
                     values_to = "OD600", 
                     cols = -c(all_of(meta_col), plate, drug, media, temp)) 
 
-## BLANKS: this checks for "blank" labeled wells in metadata
-## if none found, sets it to the highest concentration well of the control strain
+# BLANKS: this checks for "blank" labeled wells in metadata
+# if none found, sets it to the highest concentration well of the control strain
 drug <- drug %>%
     mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & drug == "FLC" & concentration == "32" & strain %in% control_strains) ~ "blank",
                                      (!("blank" %in%  c(strain, concentration)) & drug == "MCF" & concentration == "1" & strain %in% control_strains) ~ "blank",
@@ -115,27 +115,27 @@ drug <- drug %>%
                                      .default = concentration))
 drug$concentration <-factor(tolower(drug$concentration), levels = mixedsort(unique(drug$concentration))) 
 
-## Create strain list for plotting (alphanumeric + control at bottom) unless it's been entered above 
+# Create strain list for plotting (alphanumeric + control at bottom) unless it's been entered above 
 if(exists("strain_list")) {
     strains <- strain_list
 } else {
     strains <- c(unique(drug$strain[drug$strain %in% control_strains]), rev(unique(drug$strain[!(drug$strain %in% control_strains)])))}
 
 ################################################################################
-## Read in SMG ODs and reuse metadata from MIC spreadsheet
+# Read in SMG ODs and reuse metadata from MIC spreadsheet
 smg_range <- read_excel(smg_spreadsheet, sheet=2)
 for(i in 1:replicates){
     d.frame <- read_excel(smg_spreadsheet, 
                           range = smg_range[[tolower(input_drug)]][i])
     
-    ## Colnames set from input variable 
+    # Colnames set from input variable 
     colnames(d.frame) <- as.character(pull(meta.frame,column_names))
     
-    ## Add (strain or concentration) not used as column names as a new column
+    # Add (strain or concentration) not used as column names as a new column
     if(!all(colnames(d.frame) == meta.frame$strain)) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
     if(!all(colnames(d.frame) == meta.frame$concentration)) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
     
-    ## Add remaining metadata 
+    # Add remaining metadata 
     d.frame <- d.frame %>%
         add_column(plate = i) %>%
         add_column(drug = meta.frame$drug[!is.na(meta.frame$drug)]) %>%
@@ -145,14 +145,14 @@ for(i in 1:replicates){
     assign(paste("rep", i,sep = ""), d.frame)
 }
    
-## Pull together and tidy data
+# Pull together and tidy data
 drug48_data <- bind_rows(mget(ls(pattern = "^rep\\d+$")))
 drug48 <- pivot_longer(drug48_data, 
                      names_to = meta_names,
                      values_to = "OD600", 
                      cols = -c(all_of(meta_col), plate, drug, media, temp)) 
 
-## This sets the blank when it's one well of the control strain
+# This sets the blank when it's one well of the control strain
 drug48 <- drug48 %>%
     mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & drug == "FLC" & concentration == "32" & strain %in% control_strains) ~ "blank",
                                      (!("blank" %in%  c(strain, concentration)) & drug == "MCF" & concentration == "1" & strain %in% control_strains) ~ "blank",
@@ -161,7 +161,7 @@ drug48 <- drug48 %>%
 drug48$concentration <-factor(tolower(drug48$concentration), levels = mixedsort(unique(drug48$concentration))) 
 
 ################################################################################
-## Calculate relative ODs and MIC values
+# Calculate relative ODs and MIC values
 drug_od <- calculate_od(drug)
 
 drug_mic <- mic(drug_od, cutoff)
@@ -171,12 +171,12 @@ drug_smg_od <- calculate_od(drug48)
 drug_smg <- smg_subset(drug_smg_od, drug_smg_input)
 
 ################################################################################
-## Finally plot
+# Finally plot
 
-## Get the points for yellow MIC line
+# Get the points for yellow MIC line
 drug_plotting_coords <- plotting_coords(drug_od, drug_mic, cutoff, strains)
 
-## Make the "heatmap"
+# Make the "heatmap"
 drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
         #xlab(case_when(drug$drug[1] %in% c("AMB", "MCF") ~ paste("\n", drug$drug[1]," MIC"),
          #    .default = paste(drug$drug[1], " MIC"))) +
@@ -186,7 +186,7 @@ drug_mic_plot <- mic_plot(drug_od, strains, drug_plotting_coords) +
           axis.title.y = element_text(hjust = 0.5,
                                       margin = margin(0,10,0,0))) 
 
-## Barplot   
+# Barplot   
 drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
     theme(axis.text.y = element_blank(),
           axis.text.x = element_text(),
@@ -196,10 +196,10 @@ drug_smg_plot <- smg_plot(left_join(drug_mic, drug_smg), strains) +
          #.default = "SMG")) 
     xlab("SMG")
     
-## Pull together with patchwork
+# Pull together with patchwork
 drug_full_plot <- (drug_mic_plot + drug_smg_plot) + plot_layout(guides = 'collect')
 
-## Save as desired
+# Save as desired
 ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"), 
        drug_full_plot, 
        width = 7.3, 
@@ -209,11 +209,11 @@ ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"),
        bg = "white",
        dpi = 300)
 ################################################################################
-## REDCap imports
-## Numeric values to text
+# REDCap imports
+# Numeric values to text
 drug_mic$concentration <- as.character(drug_mic$concentration)
 
-## Append > when needed
+# Append > when needed
 drug_mic <- drug_mic %>%
     mutate(concentration = case_when((mean_norm_OD > cutoff & concentration == max_concentration) ~ paste0(">", max_concentration),
                                      .default = concentration))
@@ -234,7 +234,7 @@ redcap_drug_solvent <- case_when(drug$drug[1] == "FLC" ~ "EtOH",
                                  drug$drug[1] == "MCF" ~ "DMSO",
                                  drug$drug[1] == "AMB" ~ "DMSO")
 
-## For each strain, create new record and send form
+# For each strain, create new record and send form
 for(i in 1:length(drug_mic$strain)){
     primary_id=drug_mic$strain[i]
     

@@ -19,7 +19,7 @@ library(jsonlite)
 samples <- '58043'
 mic_results <- '58044'
 
-token <- "" # no github
+token <- "" 
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
 # add max concentration from MIC plates (below is standard MEC screening set-up)
@@ -67,7 +67,7 @@ eucast_mic$mic50 <- case_when(grepl(">", eucast_mic$mic50) ~ (as.numeric(sub("[^
 
 eucast_mic <- eucast_mic %>%
     filter(mic_media == "RPMI" & mic_temp=="35C") %>%
-    filter(mic_date %in% c(as.Date("2023-12-12"), as.Date("2023-12-22"))) %>%
+    filter(mic_date %in% c(as.Date("2024-01-30"), as.Date("2024-12-22"))) %>%
     group_by(genus_species) %>%
     mutate(eucast_breakpoint = case_when(drug!= "fluconazole" & genus_species %in% non_eucast_species ~ 3,
                                          drug == "fluconazole" & genus_species == "Candida krusei" ~ 4,
