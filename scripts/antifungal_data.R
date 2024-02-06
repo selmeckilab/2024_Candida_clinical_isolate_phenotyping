@@ -9,7 +9,7 @@
 ##
 ## Email: scot0854@umn.edu
 ## ---------------------------
-options(scipen = 999) 
+options(scipen = 999)
 
 ## load packages
 library(tidyverse)
@@ -27,7 +27,7 @@ mic_results <- '58044'
 growth_curves <- '58045'
 genes <- '58048'
 
-token <- '' # no gh
+token <- ''
 
 species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
                     "#882255","#BBBBBB", "#AA4499", "#DDCC77", "black")
@@ -67,7 +67,7 @@ gene_vars <- import_report(genes) %>%
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
+    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg) %>% 
     left_join((sample_info %>% 
                    select(primary_id, genus_species, series_id)), 
               by=join_by(primary_id))
@@ -76,7 +76,9 @@ mic_info <- import_report(mic_results) %>%
 # Data wrangling and summary plots.
 
 mic_info <- mic_info %>% 
-    filter(!(is.na(eucast_breakpoint)), !(primary_id %in% c("AMS5122","AMS5123")))
+    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123"))) %>%
+    filter(!(primary_id %in% c("MEC216", "MEC217", "MEC218", "MIC219") & mic_date==as.Date("2023-08-03"))) %>% 
+    inner_join(sample_info %>% select(primary_id, patient_code))
 
 # for ordering species and colors for consistency
 species_count <- sample_info %>%
@@ -180,7 +182,10 @@ smg <- ggplot(mic_info, aes(x=genus_species, y=smg)) +
                  stackdir = "center", 
                  color = "grey36", 
                  fill="grey36") + 
-    facet_grid(factor(drug, levels=c("fluconazole", "micafungin", "amphotericin B")) ~ ., labeller = drugs) +
+    facet_grid(factor(drug, 
+                      levels=c("fluconazole", "micafungin", "amphotericin B")) ~ ., 
+               labeller = drugs,
+               switch = "y") +
     theme_bw() +
     scale_fill_manual(values=species_colors, guide = "none") +
     theme(axis.text.x = element_text(angle = 30, 
@@ -204,20 +209,19 @@ ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_SMG_summary.png"),
 
 # Process de-identified antifungal relative timeframe data
 antifungals <- read_xlsx(af_spreadsheet)
-#antifungals <- antifungals %>% 
-#    inner_join((sample_info %>% 
-#                    select(primary_id, genus_species, series_id, relative_days)), 
-#               by=join_by(sample==primary_id))
 
 remote_exposure <- antifungals %>% 
-    #group_by(series_id) %>% 
-    filter(relative_start_days < -1, relative_collection_day == 0)
+    filter(relative_start_days <= 0, relative_collection_day == 0)
 
 no_results <- sample_info %>% filter(!(primary_id %in% antifungals$primary_id)) %>% 
-    select(primary_id, genus_species, relative_days, series_id, secondary_id)
+    select(primary_id, genus_species, relative_days, patient_code, series_id, secondary_id)
 
 ################################################################################
 # Resistance/variant data wrangling
+
+mic_summary <- mic_info %>%
+    group_by(drug) %>%
+    count(genus_species)
 
 resistant_isolates <- mic_info %>% 
     group_by(drug, genus_species) %>% 
@@ -225,9 +229,24 @@ resistant_isolates <- mic_info %>%
 
 res_summary <- resistant_isolates %>% 
     group_by(drug, genus_species) %>%
-    count(series_id)
+    count(patient_code)
 
+res_frequency <- mic_summary %>% 
+    inner_join(res_summary, by=join_by(drug,genus_species)) #%>% 
+    #mutate(resistant = n.y/n.x)
 
+patient_counts <- mic_info %>%
+    group_by(drug, genus_species) %>%
+    summarize(patients=length(unique(patient_code)))
+
+patient_res <- resistant_isolates %>% 
+    group_by(drug, genus_species) %>%
+    summarize(patient_res=length(unique(patient_code)))
+
+patient_freq <- patient_counts %>% 
+    inner_join(patient_res, by=join_by(drug, genus_species)) %>% 
+    mutate(patient_res_freq = patient_res/patients)
+    
 non_driver_vars <- gene_vars %>% 
     filter(!primary_id %in% resistant_isolates$primary_id)
 

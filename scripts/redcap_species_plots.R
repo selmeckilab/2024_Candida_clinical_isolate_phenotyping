@@ -93,11 +93,14 @@ recurrent <- sample_info %>%
 ## Plot of samples by species
 species_count <- sample_info %>%
     group_by(genus_species) %>%
-    summarize(species_count=n()) %>%
+    summarize(species_count=n(), patients=length(unique(patient_code))) %>%
     arrange(desc(species_count))
 
 species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
                      "#882255","#BBBBBB", "#AA4499", "#DDCC77", "black")
+
+species_colors <- species_colors %>% 
+    set_names(species_count$genus_species)
 
 sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
     geom_col(fill=species_colors) +
@@ -117,7 +120,24 @@ ggsave("images/2022_Candida_MEC_spp_distribution.png", sp_plot,
        device = png, dpi=300, bg="white",
        width = 7, height = 5, units = "in")
 
+pt_plot <- ggplot(species_count, aes(x=genus_species, y=patients)) +
+    geom_col(fill=species_colors) +
+    scale_x_discrete(limits=species_count$genus_species) +
+    scale_y_continuous(limits = c(0,100))+
+    ylab("Number of Patients") +
+    xlab("Species") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 35, 
+                                     hjust = 1, 
+                                     vjust = 1,
+                                     color = "black",
+                                     size = 10,
+                                     face = "italic")) +
+    theme(axis.title = element_text(color = "black", size = 16))
 
+ggsave("images/2022_Candida_MEC_spp_pt_count.png", pt_plot, 
+       device = png, dpi=300, bg="white",
+       width = 7, height = 5, units = "in")
 
 # Create vectors for plot comparing cluster-series-na counts
 category_counts <- sample_info %>%

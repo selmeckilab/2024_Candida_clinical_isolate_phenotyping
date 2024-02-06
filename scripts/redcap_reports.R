@@ -14,6 +14,7 @@
 ## load packages
 library(tidyverse)
 library(writexl)
+library(paletteer)
 
 # redcap report IDs
 samples <- '58043'
@@ -25,7 +26,13 @@ avail_seq_data <- '58050'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
-token <- '' 
+token <- ''
+
+patient_colors <- c(paletteer_d("ggsci::default_igv"),
+                    "#838b8b",
+                    "black",
+                    "#cdcdb4",
+                    "#155F83")
 
 # function to import report from redcap
 import_report <- function(report_number) {
@@ -105,5 +112,24 @@ albicans_sts <- import_report(calb_mlst) %>%
                                 adp1_exact_match, mpib_exact_match, 
                                 sya1_exact_match, vps13_exact_match, 
                                 zwf1b_exact_match, sep = "")) %>% 
-    mutate(st = case_when(is.na(st) ~ concat_alleles, .default = st))
+    mutate(st = case_when(is.na(st) ~ concat_alleles, .default = st)) %>% 
+    inner_join(sample_info %>% select(primary_id, patient_code), by=join_by(primary_id))
 
+albicans_sts$patient_code <- as.character(albicans_sts$patient_code)
+
+albicans_st_summary <- albicans_sts %>% 
+    count(st) %>% 
+    arrange(desc(n))
+
+st_plot <- ggplot(albicans_sts %>% count(st, patient_code), aes(st, n, fill=patient_code))+
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values=patient_colors, guide = "none") +
+    scale_x_discrete(limits = albicans_st_summary$st) +
+    theme_minimal() +
+    ylab("Number of isolates") +
+    xlab("Sequence type") +
+    theme(axis.text.x = element_text(angle = 90))
+
+ggsave("images/Calbicans/Calbicans_MLST_count.png", st_plot, 
+       device = png, dpi=300, bg="white",
+       width = 8, height = 5, units = "in")
