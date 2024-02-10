@@ -19,21 +19,26 @@ options(scipen = 999)
 library(jsonlite)
 ## ---------------------------
 # Functions
-source("~/umn/mic_data/scripts/MIC_calc_functions.R")
-source("~/umn/mic_data/scripts/MIC_heatmap.R")
+source("scripts/MIC_calc_functions.R")
+source("scripts/MIC_heatmap.R")
 
+# VARIABLES - READ THESE CAREFULLY!
 # For automatic uploading to REDcap
 api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/api/"
 
-# Drug and spreadsheet data
+# Enter drug and spreadsheet data
 input_drug <- "flc"
 replicates <- 3
-mic_spreadsheet <-"data/MIC/2024-01-25_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2024-01-26_EW_SMG48_RPMI35.xlsx"
+metadata_tab <- 2 
+mic_spreadsheet <-"data/MIC/2024-02-08_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2024-02-09_EW_SMG48_RPMI35.xlsx"
 
-# Type either "strain" or "concentration" for your column names
+# Type either "strain" or "concentration" for col names, depending on plate layout
 column_names <- "strain"
+
+# Number of columns filled, default is 12
+cols_used <- 12
 
 # FOR SPECIFIC ORDER: put IDs in "strains" vector. Otherwise leave commented out.
 #strain_list <- c("AMS5123", "MEC257", "MEC208", "MEC205", "MEC194", "MEC190", "MEC188", "MEC176", "MEC175")
@@ -45,18 +50,19 @@ column_names <- "strain"
 # Add control IDs
 control_strains <- c("AMS5123", "AMS5122", "AMS2401")
 
-# Drug concentrations (this assumes the usual "screening" set-up, change as needed)
+# Drug concentrations (this assumes the usual "screening" set-up, CHANGE AS NEEDED)
 concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32),
                            toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1))
 
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
+
 ################################################################################
 # Load metadata - specify which tab it is (usually 2) and add vals from above
 meta.frame <- read_excel(mic_spreadsheet, 
-                         sheet = 2)
-meta.frame$drug <- c(toupper(input_drug), rep(NA, times=12-length(input_drug)))
+                         sheet = metadata_tab)
+meta.frame$drug <- c(toupper(input_drug), rep(NA, times=cols_used - length(input_drug)))
 
-meta.frame$concentration <- c(concentration, rep(NA, times=12-length(concentration)))
+meta.frame$concentration <- c(concentration, rep(NA, times=cols_used - length(concentration)))
 
 ## Set vars for use below
 meta_names = case_when(column_names=="strain" ~ "strain",
@@ -121,6 +127,7 @@ if(exists("strain_list")) {
 } else {
     strains <- c(unique(drug$strain[drug$strain %in% control_strains]), rev(unique(drug$strain[!(drug$strain %in% control_strains)])))}
 
+mic_boxplot(drug)
 ################################################################################
 # Read in SMG ODs and reuse metadata from MIC spreadsheet
 smg_range <- read_excel(smg_spreadsheet, sheet=2)
@@ -160,6 +167,7 @@ drug48 <- drug48 %>%
                                      .default = concentration))
 drug48$concentration <-factor(tolower(drug48$concentration), levels = mixedsort(unique(drug48$concentration))) 
 
+mic_boxplot(drug48)
 ################################################################################
 # Calculate relative ODs and MIC values
 drug_od <- calculate_od(drug)

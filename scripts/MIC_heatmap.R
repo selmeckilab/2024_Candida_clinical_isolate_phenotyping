@@ -42,7 +42,9 @@ mic_boxplot <- function(tidy_mic){
         ggplot(aes(x = concentration, y = OD600)) +
         facet_wrap(~strain, ncol = 4) +
         geom_boxplot() +
-        theme(axis.text.x = element_text(angle = 90))
+        theme(axis.text.x = element_text(angle = 90)) +
+        theme_bw() +
+        xlab("Drug concentration")
 }
 
 plotting_coords <- function(final_od, mic_cut, mic_cutpoint, strain_order){
