@@ -147,7 +147,7 @@ amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) +
     scale_fill_manual(values=species_colors, guide = "none") +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
-    xlab("\nMIC") +
+    xlab("\nMIC value") +
     ylab("\nAmphotericin B\n") +
     #ylab(NULL) +
     theme(strip.text = element_blank())+
@@ -168,20 +168,14 @@ ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_MIC_summary.png"),
        device=png, 
        bg="white", 
        dpi=300, 
-       width=12.5, 
+       width=13.5, 
        height = 7.5, 
        units = "in")
 
-smg <- ggplot(mic_info, aes(x=genus_species, y=smg)) + 
-    geom_boxplot(aes(fill=genus_species), 
-                 outlier.colour = NA, 
-                 width = 0.4, 
-                 alpha = 0.8) +
-    geom_dotplot(binaxis = "y", 
-                 binwidth = 0.015,
-                 stackdir = "center", 
-                 color = "grey36", 
-                 fill="grey36") + 
+
+smg <- ggplot(mic_info, aes(x=genus_species, y=smg, fill = genus_species)) + 
+    geom_violin() +
+    geom_point(data = filter(mic_info, genus_species=="Candida nivariensis")) +
     facet_grid(factor(drug, 
                       levels=c("fluconazole", "micafungin", "amphotericin B")) ~ ., 
                labeller = drugs,
