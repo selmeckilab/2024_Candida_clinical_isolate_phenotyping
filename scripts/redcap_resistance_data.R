@@ -22,7 +22,7 @@ genes <- '58048'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
-token <- '' # no gh
+token <- '' 
 
 # function to import report from redcap
 import_report <- function(report_number) {

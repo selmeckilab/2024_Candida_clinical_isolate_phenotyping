@@ -13,7 +13,6 @@
 ## ---------------------------
 ## load packages
 library(tidyverse)
-library(lubridate)
 library(magrittr)
 library(reshape2)
 
@@ -50,18 +49,11 @@ sample_info <- import_report(samples) %>%
 serial_timespans <- sample_info %>%
     filter(series_id !="NA") %>%
     group_by(series_id) %>%
-    mutate(series_span = max(relative_days))
+    mutate(series_span = max(relative_days)) %>% 
+    mutate(series_count = n())
 
-count_serial_samples <- serial_timespans %>%
-    group_by(series_id) %>%
-    filter(series_span >0) %>%
-    summarize(series_count = n())
-
-serial_timespans <- serial_timespans %>%
-    inner_join(count_serial_samples, by = 'series_id')
-    
-serial_calculations <- serial_timespans %>%
-    select(primary_id, series_id, series_span, series_count) 
+serial_summary <- serial_timespans %>%
+    select(primary_id, genus_species, series_id, series_span, series_count) 
 
 count_cluster_samples <- sample_info %>%
     filter(cluster_id !="NA") %>% 
@@ -69,26 +61,33 @@ count_cluster_samples <- sample_info %>%
     summarize(cluster_count=n()) 
 
 sample_info <- sample_info %>%
-    full_join(serial_calculations, by = c("primary_id", "series_id")) %>%
+    full_join(serial_summary, by = c("primary_id", "series_id")) %>%
     full_join(count_cluster_samples, by = "cluster_id") 
 
-# Tables of priorities: longer spans/more samples, recurrent infection or clusters
+# Tables of priorities: longer spans/more samples, recurrent infection
 priority_series <- sample_info %>%
     filter(series_id !="NA") %>%
-    filter(series_span > 1, series_span < 30, series_count >2) %>%
+    filter(series_span <= 30, series_count >1) %>%
     group_by(series_id) %>%
     slice(2L) %>%
     ungroup() %>%
     select(genus_species, series_id, series_span, series_count) %>%
-    arrange(desc(series_span))
+    arrange(desc(series_count))
 
 recurrent <- sample_info %>%
     filter(series_id != "NA" & series_span >30) %>%
     group_by(series_id) %>%
-    slice(2L) %>%
+    slice(n()) %>%
     ungroup() %>%
     select(genus_species, series_id, series_span, series_count) %>%
     arrange(genus_species, desc(series_span))
+
+# Summary statistics of series
+
+series_avg <- priority_series %>% 
+    group_by(genus_species) %>%
+    summarise(avg_series = round(mean(series_count, na.rm =TRUE), digits = 1), 
+              avg_length=round(mean(series_span, na.rm = TRUE), digits = 1))
 
 ## Plot of samples by species
 species_count <- sample_info %>%
@@ -106,8 +105,9 @@ sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
     geom_col(fill=species_colors) +
     scale_x_discrete(limits=species_count$genus_species) +
     ylab("Number of Isolates") +
-    xlab("Species") +
-    theme_minimal() +
+    xlab(NULL) +
+    theme_bw() +
+    theme(axis.ticks = element_blank())+
     theme(axis.text.x = element_text(angle = 35, 
                                      hjust = 1, 
                                      vjust = 1,
@@ -118,15 +118,16 @@ sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
 
 ggsave("images/2022_Candida_MEC_spp_distribution.png", sp_plot, 
        device = png, dpi=300, bg="white",
-       width = 7, height = 5, units = "in")
+       width = 6, height = 4, units = "in")
 
 pt_plot <- ggplot(species_count, aes(x=genus_species, y=patients)) +
     geom_col(fill=species_colors) +
     scale_x_discrete(limits=species_count$genus_species) +
     scale_y_continuous(limits = c(0,100))+
     ylab("Number of Patients") +
-    xlab("Species") +
-    theme_minimal() +
+    xlab(NULL) +
+    theme_bw() +
+    theme(axis.ticks = element_blank())+
     theme(axis.text.x = element_text(angle = 35, 
                                      hjust = 1, 
                                      vjust = 1,
@@ -137,7 +138,33 @@ pt_plot <- ggplot(species_count, aes(x=genus_species, y=patients)) +
 
 ggsave("images/2022_Candida_MEC_spp_pt_count.png", pt_plot, 
        device = png, dpi=300, bg="white",
-       width = 7, height = 5, units = "in")
+       width = 6, height = 4, units = "in")
+
+sorted_species <- which(species_count$genus_species %in% priority_series$genus_species)
+
+series_plot <- priority_series %>% 
+    ggplot( aes(x = genus_species, y = series_count, fill=genus_species))+
+    scale_fill_manual(values = species_colors)+
+    scale_x_discrete(limits=species_count$genus_species[sorted_species]) +
+    scale_y_continuous(limits = c(0,100))+
+    geom_col(colour = "black")+
+    ylab("Serial isolates") +
+    xlab(NULL) +
+    theme_bw() +
+    theme(axis.ticks = element_blank())+
+    theme(legend.position = "none")+
+    theme(axis.text.x = element_text(angle = 35, 
+                                     hjust = 1, 
+                                     vjust = 1,
+                                     color = "black",
+                                     size = 10,
+                                     face = "italic")) +
+    theme(axis.title = element_text(color = "black", size = 16))
+
+ggsave("images/2022_Candida_MEC_series_totals.png", series_plot, 
+       device = png, dpi=300, bg="white",
+       width = 6, height = 4, units = "in")
+
 
 # Create vectors for plot comparing cluster-series-na counts
 category_counts <- sample_info %>%
@@ -169,7 +196,7 @@ viz_categories <- ggplot(category_counts, aes(x=genus_species,
     xlab("Species") +
     ylab("Count of isolates") +
     labs(fill="Category") +
-    theme_minimal() +
+    theme_bw() +
     theme(axis.text.x = element_text(angle = 35, 
                                      hjust = 1, 
                                      vjust = 1,
@@ -182,4 +209,4 @@ viz_categories <- ggplot(category_counts, aes(x=genus_species,
     
 ggsave("images/2022_Candida_patient_categories.png", viz_categories,
        device = png, dpi=300, bg="white",
-       width = 7.2, height = 5, units = "in")
+       width = 6.1, height = 4, units = "in")
