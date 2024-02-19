@@ -43,7 +43,9 @@ import_report <- function(report_number) {
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>% 
     filter(primary_id != "MEC103") %>%
-    filter(isolate_type == "clinical")
+    filter(isolate_type == "clinical") 
+
+sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
 
 # Calculate timeframes and isolate numbers for each series or cluster
 serial_timespans <- sample_info %>%
@@ -61,7 +63,7 @@ count_cluster_samples <- sample_info %>%
     summarize(cluster_count=n()) 
 
 sample_info <- sample_info %>%
-    full_join(serial_summary, by = c("primary_id", "series_id")) %>%
+    full_join(serial_summary, by = c("primary_id", "series_id", "genus_species")) %>%
     full_join(count_cluster_samples, by = "cluster_id") 
 
 # Tables of priorities: longer spans/more samples, recurrent infection
@@ -102,7 +104,7 @@ species_colors <- species_colors %>%
     set_names(species_count$genus_species)
 
 sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
-    geom_col(fill=species_colors) +
+    geom_col(fill=species_colors, colour = "grey26") +
     scale_x_discrete(limits=species_count$genus_species) +
     ylab("Number of Isolates") +
     xlab(NULL) +
@@ -112,16 +114,16 @@ sp_plot <- ggplot(species_count, aes(x=genus_species, y=species_count)) +
                                      hjust = 1, 
                                      vjust = 1,
                                      color = "black",
-                                     size = 10,
+                                     size = 11,
                                      face = "italic")) +
-    theme(axis.title = element_text(color = "black", size = 16))
+    theme(axis.title = element_text(color = "black", size = 14))
 
 ggsave("images/2022_Candida_MEC_spp_distribution.png", sp_plot, 
        device = png, dpi=300, bg="white",
        width = 6, height = 4, units = "in")
 
 pt_plot <- ggplot(species_count, aes(x=genus_species, y=patients)) +
-    geom_col(fill=species_colors) +
+    geom_col(fill=species_colors, colour = "grey26") +
     scale_x_discrete(limits=species_count$genus_species) +
     scale_y_continuous(limits = c(0,100))+
     ylab("Number of Patients") +
@@ -132,9 +134,9 @@ pt_plot <- ggplot(species_count, aes(x=genus_species, y=patients)) +
                                      hjust = 1, 
                                      vjust = 1,
                                      color = "black",
-                                     size = 10,
+                                     size = 11,
                                      face = "italic")) +
-    theme(axis.title = element_text(color = "black", size = 16))
+    theme(axis.title = element_text(color = "black", size = 14))
 
 ggsave("images/2022_Candida_MEC_spp_pt_count.png", pt_plot, 
        device = png, dpi=300, bg="white",
@@ -147,8 +149,8 @@ series_plot <- priority_series %>%
     scale_fill_manual(values = species_colors)+
     scale_x_discrete(limits=species_count$genus_species[sorted_species]) +
     scale_y_continuous(limits = c(0,100))+
-    geom_col(colour = "black")+
-    ylab("Serial isolates") +
+    geom_col(colour = "grey26")+
+    ylab("Serial isolate counts by patient") +
     xlab(NULL) +
     theme_bw() +
     theme(axis.ticks = element_blank())+
@@ -157,9 +159,9 @@ series_plot <- priority_series %>%
                                      hjust = 1, 
                                      vjust = 1,
                                      color = "black",
-                                     size = 10,
+                                     size = 11,
                                      face = "italic")) +
-    theme(axis.title = element_text(color = "black", size = 16))
+    theme(axis.title = element_text(color = "black", size = 14))
 
 ggsave("images/2022_Candida_MEC_series_totals.png", series_plot, 
        device = png, dpi=300, bg="white",
