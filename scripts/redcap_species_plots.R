@@ -60,7 +60,7 @@ serial_summary <- serial_timespans %>%
 count_cluster_samples <- sample_info %>%
     filter(cluster_id !="NA") %>% 
     group_by(cluster_id) %>%
-    summarize(cluster_count=n()) 
+    summarise(patients_per_cluster=n_distinct(patient_code), isolates_per_cluster=n()) 
 
 sample_info <- sample_info %>%
     full_join(serial_summary, by = c("primary_id", "series_id", "genus_species")) %>%
