@@ -55,6 +55,33 @@ sample_info <- import_report(samples) %>%
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
 
+mic_info <- import_report(mic_results) %>%
+    filter(redcap_repeat_instrument != "NA") %>%
+    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg) %>% 
+    left_join((sample_info %>% 
+                   select(primary_id, genus_species, series_id)), 
+              by=join_by(primary_id))
+
+mic_info <- mic_info %>% 
+    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")))
+
+mic_info$mic50 <- as.factor(mic_info$mic50)
+
+
+mic_info$mic50 <- fct_relevel(mic_info$mic50, "0.016", "0.032", "0.064",
+                              "0.125", "0.256", "0.5", "1",
+                              ">1", "2", "4", "8", "16", "32", ">32")
+
+mic_info <- mic_info %>% 
+    group_by(primary_id) %>% 
+    filter(mic_date==max(mic_date))
+
+
+mic_info <- mic_info %>%    
+    select(primary_id, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
+    pivot_wider(names_from = drug, values_from = c(mic50, smg, eucast_breakpoint))
+    
+
 gc <- import_report(growth_curves) %>%
     filter(redcap_repeat_instrument != "NA", 
            !primary_id %in% c("AMS5122", "AMS5123")) %>%
@@ -67,6 +94,13 @@ gc <- gc %>%
     filter(drug_used=="None", gc_date > as.Date("2022-12-31")) %>% 
     left_join(sample_info %>% select(primary_id,genus_species,series_id), 
               by = join_by(primary_id))
+
+gc <- gc %>% group_by(primary_id) %>% 
+    filter(redcap_repeat_instance ==max(redcap_repeat_instance))
+
+gc <- gc %>% 
+    left_join(mic_info)
+
 
 ################################################################################
 # Data wrangling and summary plots.
@@ -122,6 +156,8 @@ r_metric <- ggplot(gc, aes(x=genus_species, y=r)) +
     xlab("Species") +
     ylab("Growth rate, r")
 
+stack_plots <- k_metric/r_metric
+
 tgen_metric <- ggplot(gc, aes(x=genus_species, y=t_gen, fill=genus_species)) + 
     geom_violin() +
     scale_fill_manual(values=species_colors, guide = "none") +
@@ -135,8 +171,6 @@ tgen_metric <- ggplot(gc, aes(x=genus_species, y=t_gen, fill=genus_species)) +
     xlab("Species") +
     ylab("Doubling time (hr)")
 
-stack_plots <- k_metric/r_metric
-
 ggsave(paste0("images/2023_growth_curves/",Sys.Date(),"_doubling_time.png"),
        tgen_metric,
        device=png, 
@@ -145,3 +179,29 @@ ggsave(paste0("images/2023_growth_curves/",Sys.Date(),"_doubling_time.png"),
        width = 7, 
        height=5, 
        units="in")
+
+tgen_subset <- gc %>% 
+    filter(genus_species %in% c("C. albicans"), !is.na(eucast_breakpoint_fluconazole)) %>% 
+    ggplot(aes(x=eucast_breakpoint_fluconazole, y=t_gen, fill=genus_species)) + 
+    geom_violin() +
+    scale_fill_manual(values=species_colors, guide = "none") +
+    geom_dotplot(binaxis = "y", 
+                 binwidth = 0.015,
+                 stackdir = "center", 
+                 color = "grey36", 
+                 fill="grey36") + 
+    theme_bw() +
+    scale_y_continuous(limits = c(0,3.5), breaks = c(0,1,2,3))+
+    #scale_x_discrete(labels =c("FLC Resistant", "FLC Intermediate"), limits=c("R", "I"))+
+    scale_x_discrete(labels=c("FLC Resistant", "FLC Sensitive"))+
+    theme(axis.text.x = element_text(#angle = 30, 
+                                     #face="italic", 
+                                     #hjust = 1, 
+                                     #vjust = 1
+        ),
+          axis.title.x = element_text(face = "italic")) +
+    xlab("C. albicans") +
+    ylab("Doubling time (hr)")
+
+ggsave("images/2023_growth_curves/Calbicans_tgen_by_FLC_eucast.png", device = png, dpi=300, bg="white")
+
