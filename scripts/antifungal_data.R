@@ -19,7 +19,7 @@ library(patchwork)
 
 # local antifungal data
 af_spreadsheet <- "data/metadata/MEC_antifungal_history.xlsx"
-breakpoint_file <- "Candida_eucast_breakpoints.xlsx"
+breakpoint_file <- "data/metadata/Candida_eucast_breakpoints.xlsx"
 
 # redcap report IDs
 samples <- '58043'
@@ -82,8 +82,8 @@ mic_info <- import_report(mic_results) %>%
 
 mic_info <- mic_info %>% 
     filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123"))) %>%
-    filter(!(drug=="amphotericin B" & mic_date %in% c(as.Date("2023-07-20"), as.Date("2023-08-09"),
-                                                      as.Date("2023-08-15"), as.Date("2023-08-24")))) %>% 
+    #filter(!(drug=="amphotericin B" & mic_date %in% c(as.Date("2023-07-20"), as.Date("2023-08-09"),
+                                                #      as.Date("2023-08-15"), as.Date("2023-08-24")))) %>% 
     inner_join(sample_info %>% select(primary_id, patient_code))
 
 # for ordering species and colors for consistency
