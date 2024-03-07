@@ -27,14 +27,23 @@ input_drug <- "amb"
 replicates <- 3
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
-mic_spreadsheet <-"data/MIC/2024-02-27_EW_MIC24_RPMI35.xlsx"
+mic_spreadsheet <-"data/MIC/2024-03-07_EW_MIC24_RPMI35.xlsx"
 smg_spreadsheet <- "data/MIC/2024-02-28_EW_SMG48_RPMI35.xlsx"
 
 # Type either "strain" or "concentration" for col names, depending on plate layout
-column_names <- "strain"
+column_names <- "concentration"
 
 # Number of columns filled, default is 12
 cols_used <- 12
+
+# Drug concentrations (this assumes the usual "screening" set-up, CHANGE AS NEEDED)
+concentration <- case_when(toupper(input_drug) == "FLC" ~ c("blank",0,16,24,32,48,64,96,128,160,208,256),
+                           toupper(input_drug) %in% c("MCF","AMB") ~ c("blank",0,0.016,0.032,0.064,0.128,0.256,0.5,1,2,4,8))
+
+max_concentration <- "8"
+
+# Add control IDs
+control_strains <- c("AMS5123", "AMS5122")
 
 # FOR SPECIFIC ORDER: put IDs in "strains" vector. Otherwise leave commented out.
 #strain_list <- c("AMS5123", "MEC257", "MEC208", "MEC205", "MEC194", "MEC190", "MEC188", "MEC176", "MEC175")
@@ -43,19 +52,14 @@ cols_used <- 12
 # Need strain_list above with wanted strains plus IDs to skip in "exclude" vector. Otherwise leave commented out.
 #exclude <- c("MEC174", "MEC185", "MEC196")
 
-# Add control IDs
-control_strains <- c("AMS5123", "AMS5122", "AMS2401")
-
-# Drug concentrations (this assumes the usual "screening" set-up, CHANGE AS NEEDED)
-concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32),
-                           toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1))
-
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ################################################################################
 # Load metadata
 meta.frame <- read_excel(mic_spreadsheet, 
-                         sheet = metadata_tab)
+                         sheet = metadata_tab,
+                         range = "A1:F13")
+
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=cols_used - length(input_drug)))
 
 meta.frame$concentration <- c(concentration, rep(NA, times=cols_used - length(concentration)))
@@ -69,8 +73,6 @@ meta_col = case_when(column_names!="strain" ~ "strain",
 cutoff <- case_when(meta.frame$drug[1] == "FLC" ~ 0.5,
                     meta.frame$drug[1] == "MCF" ~ 0.5,
                     meta.frame$drug[1] == "AMB" ~ 0.1)
-
-max_concentration <- max(meta.frame$concentration, na.rm = TRUE)
 
 #x_axis_angle <- case_when(meta.frame$drug[1]== "FLC" ~ 0,
 #                          meta.frame$drug[1] == "MCF" ~ 90,
@@ -89,8 +91,8 @@ for(i in 1:replicates){
   colnames(d.frame) <- as.character(pull(meta.frame,column_names))
   
   # Add (strain or concentration) not used as column names as a new column
-  if(!all(colnames(d.frame) == meta.frame$strain)) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
-  if(!all(colnames(d.frame) == meta.frame$concentration)) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
+  if(!all(meta.frame$strain[!is.na(meta.frame$strain)] %in% colnames(d.frame))) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
+  if(!all(meta.frame$concentration[!is.na(meta.frame$concentration)] %in% colnames(d.frame))) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
   
   # Add remaining metadata 
   d.frame <- d.frame %>%

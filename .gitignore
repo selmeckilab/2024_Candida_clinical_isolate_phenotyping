@@ -7,5 +7,7 @@
 *.docx
 *.csv
 *.xlsx
+*.png
+*.tiff
 data
 images

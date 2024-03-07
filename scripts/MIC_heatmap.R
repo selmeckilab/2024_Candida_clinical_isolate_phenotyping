@@ -24,12 +24,14 @@ strain_order <- function(mic_cut){
 mic_boxplot <- function(tidy_mic){
     tidy_mic$strain <- toupper(tidy_mic$strain)
     tidy_mic %>%
-        mutate(across(strain, as_factor)) 
+        mutate(across(strain, as_factor))
     tidy_mic$strain <- fct_relevel(tidy_mic$strain, mixedsort)
+    tidy_mic <- tidy_mic %>% 
+        filter(concentration != "blank", strain != "blank") 
     #tidy_mic$concentration <- fct_rev(tidy_mic$concentration)
     tidy_mic %>%
         ggplot(aes(x = concentration, y = OD600)) +
-        facet_wrap(~strain, ncol = 4) +
+        facet_wrap(~strain, ncol = 3) +
         geom_boxplot() +
         theme(axis.text.x = element_text(angle = 90)) +
         theme_bw() +
@@ -37,7 +39,6 @@ mic_boxplot <- function(tidy_mic){
 }
 
 plotting_coords <- function(final_od, mic_cut, mic_cutpoint, strain_order){
-  # coordinates for MIC lines, assuming strains on x-axis
   final_od %>%
         filter(!strain %in% exclude) -> final_od
     
@@ -79,7 +80,7 @@ mic_plot <- function(final_od, strain_order, plotting_coords){
                yend= plotting_coords$mic_cut_yend, 
                x= plotting_coords$mic_cut_x,
                xend= plotting_coords$mic_cut_xend, 
-               colour="yellow", size=1.5) + 
+               colour="yellow", linewidth=1.5) + 
       scale_y_discrete(limits = strain_order, labels = toupper(strain_order)) + #, guide = guide_axis(angle = 90)) +
       coord_equal()
 }
