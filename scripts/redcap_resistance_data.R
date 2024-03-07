@@ -1,12 +1,6 @@
 ## ---------------------------
 ## Script name: redcap_resistance_data.R
-##
-## Purpose of script: Pull REDCap reports to analyze MIC and gene variants
-##
 ## Author: Nancy Scott
-##
-## Date Created: 2023-12-28
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
@@ -24,9 +18,9 @@ cglab_mlst <- '58052'
 
 token <- '' 
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-  url <- "https://redcap.ahc.umn.edu/api/"
+  url <- "https://redcap.ahc.umn.edu/redcap/api/"
   formData <- list("token"=token,
                    content='report',
                    format='csv',
