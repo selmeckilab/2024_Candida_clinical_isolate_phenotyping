@@ -1,21 +1,15 @@
 ## ---------------------------
-## Script name: redcap_variant_upload.R
-##
-## Purpose of script: Upload gene variant records by API
-##
+## Purpose: Upload gene variant records by API
 ## Author: Nancy Scott
-##
-## Date Created: 2023-12-04
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
 ## ---------------------------
-## load packages
+## Load packages
 library(tidyverse)
 library(jsonlite)
 
-# spreadsheet of variants
+# Spreadsheet of variants
 vars <- read_csv("Cglabrata_MEC_bwa_filtered_annotated.csv", show_col_types = FALSE)
 vars$POS <- as.character(vars$POS)
 vars <- vars %>% 
@@ -25,19 +19,17 @@ vars <- vars %>%
 amr_genes <- read_csv("redcap_gene_ids.csv")
 ref <- "CBS138_s05m03r02"
 
-# api info
+# API info
 api_token <- ""
-api_url <-  "https://redcap.ahc.umn.edu/api/"
+api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
-################################################################################
-## Get existing data from REDCap
-# redcap report IDs
+# Redcap report IDs
 sample_report <- '58043'
 gene_report <- '58048'
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-    url <- "https://redcap.ahc.umn.edu/api/"
+    url <- "https://redcap.ahc.umn.edu/redcap/api/"
     formData <- list("token"=api_token,
                      content='report',
                      format='csv',
@@ -63,25 +55,22 @@ gene_vars <- import_report(gene_report) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq)
 
-################################################################################
 ## New data processing
-# add redcap gene codes
+# Add redcap gene codes
 vars <- vars %>% 
     left_join(amr_genes, by=join_by(GENE==gene)) %>% 
     filter(!(is.na(redcap_code))) %>% 
     filter(Impact != "LOW")
 
-# extract sample IDs
+# Extract sample IDs
 samples <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC")] %>%
   str_extract("AMS\\d+|MEC\\d+") %>% unique()
 
-# non-sample colnames
+# Non-sample colnames
 gene_data <- colnames(vars)[str_detect(colnames(vars), "AMS|MEC", negate = TRUE)]
 
-################################################################################
-## Data upload 
+# Data upload 
 # For each strain, create new record and send form
-
 for(j in 1:length(samples)){
   single_sample <- vars[,c(gene_data, paste0(samples[j], ".VAF"), paste0(samples[j], ".GT"))] %>% 
     filter(get(paste0(samples[j],".VAF")) > 0.4)

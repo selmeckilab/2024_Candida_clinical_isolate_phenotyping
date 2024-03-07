@@ -1,19 +1,11 @@
 ## ---------------------------
-## Script name: MIC_calc_functions.R
-##
-## Purpose of script: Functions for calculation of normalized ODs, mean MIC and 
-## mean SMG per strain from labeled, combined plate reader spreadsheet
-##
+## Purpose: Functions to calculate normalized ODs, mean MIC and mean SMG per strain 
 ## Author: Nancy Scott
-##
-## Date Created: 2022-05-23
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes: plotting moved to different script 
-##   
 ## ---------------------------
-options(scipen = 999) # To view outputs in non-scientific notation
+options(scipen = 999) 
 ## ---------------------------
 ## load packages
 library(readxl)
@@ -21,12 +13,10 @@ library(tidyverse)
 library(gtools)
 ## ---------------------------
 # Assumes tidied data with associated metadata (long format)
-# See MIC_file_prep.R for function to prep labeled spreadsheets.
 
 # Calculate per-plate mean background, correct background, 
 # normalize to no-drug control per plate,
 # and calculate combined mean of all plates:
-
 calculate_od <- function(tidy_mic) {
   plate_blank <- tidy_mic %>%
     # control for spreadsheet layout (cols vs rows of samples)

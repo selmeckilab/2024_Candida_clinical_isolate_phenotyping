@@ -124,7 +124,7 @@ def main():
         'returnContent': 'count',
         'returnFormat': 'json'
     }
-    r = requests.post('https://redcap.ahc.umn.edu/api/',data=fields)
+    r = requests.post('https://redcap.ahc.umn.edu/redcap/api/',data=fields)
     print(isolate_data['primary_id'] + ' HTTP Status: ' + " " + str(r.status_code), file=sys.stderr)
     print(r.json(), file=sys.stderr)
 

@@ -1,12 +1,6 @@
 ## ---------------------------
-## Script name: redcap_eucast_categories.R
-##
-## Purpose of script: Pull MICs and determine eucast categories 
-##
+## Purpose: Pull MICs and determine eucast categories 
 ## Author: Nancy Scott
-##
-## Date Created: 2023-09-06
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
@@ -15,22 +9,22 @@
 library(tidyverse)
 library(jsonlite)
 
-# redcap report IDs
+# Redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
 
 token <- "" 
-api_url <-  "https://redcap.ahc.umn.edu/api/"
+api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
-# add max concentration from MIC plates (below is standard MEC screening set-up)
-# change if needed
+# Add max concentration from MIC plates (below is standard MEC screening set-up)
+# Change if needed
 max_flc <- 32
 max_amb <- 1.00
 max_mcf <- 1.00
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-  url <- "https://redcap.ahc.umn.edu/api/"
+  url <- api_url
   formData <- list("token"=token,
                    content='report',
                    format='csv',
@@ -49,14 +43,14 @@ import_report <- function(report_number) {
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat')))
 
-# make species df for use with breakpoint info
+# Make species df for use with breakpoint info
 species <- sample_info %>%
     select(primary_id, genus_species)
 
 non_eucast_species <- c("Candida lusitaniae", "Candida kefyr",
                         "Candida nivariensis", "Candida orthopsilosis", "Candida utilis")
 
-# get MIC data and add species
+# Get MIC data and add species
 eucast_mic <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, mic_media, mic_temp, smg) %>%
@@ -67,7 +61,7 @@ eucast_mic$mic50 <- case_when(grepl(">", eucast_mic$mic50) ~ (as.numeric(sub("[^
 
 eucast_mic <- eucast_mic %>%
     filter(mic_media == "RPMI" & mic_temp=="35C") %>%
-    filter(mic_date %in% c(as.Date("2024-01-30"), as.Date("2024-12-22"))) %>%
+    filter(mic_date %in% c(as.Date("2024-02-20"), as.Date("2024-02-27"))) %>%
     group_by(genus_species) %>%
     mutate(eucast_breakpoint = case_when(drug!= "fluconazole" & genus_species %in% non_eucast_species ~ 3,
                                          drug == "fluconazole" & genus_species == "Candida krusei" ~ 4,
@@ -98,7 +92,6 @@ eucast_mic <- eucast_mic %>%
 
 
 # Upload EUCAST categories to REDCap
-
 for(i in 1:length(eucast_mic$primary_id)){
     
     record <- c(

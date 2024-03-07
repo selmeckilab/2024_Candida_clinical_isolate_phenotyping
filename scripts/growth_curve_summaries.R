@@ -30,7 +30,7 @@ species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332
 
 # function to import report from redcap
 import_report <- function(report_number) {
-  url <- "https://redcap.ahc.umn.edu/api/"
+  url <- "https://redcap.ahc.umn.edu/redcap/api/"
   formData <- list("token"=token,
                    content='report',
                    format='csv',

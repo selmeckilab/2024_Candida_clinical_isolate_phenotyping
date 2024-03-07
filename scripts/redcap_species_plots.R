@@ -1,30 +1,24 @@
 ## ---------------------------
-## Script name: redcap_species_plots.R
-##
-## Purpose of script: MEC isolate distributions by species and category
-##
+## Purpose: MEC isolate distributions by species and category
 ## Author: Nancy Scott
-##
-## Date Created: 2023-11-28
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
 ## ---------------------------
-## load packages
+## Load packages
 library(tidyverse)
 library(magrittr)
 library(reshape2)
 
-# redcap report ID
+# Redcap report ID
 samples <- '58043'
 
-# api token
+# API token
 api_token <- ""
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-    url <- "https://redcap.ahc.umn.edu/api/"
+    url <- "https://redcap.ahc.umn.edu/redcap/api/"
   formData <- list("token"=api_token,
                    content='report',
                    format='csv',
@@ -91,7 +85,7 @@ series_avg <- priority_series %>%
     summarise(avg_series = round(mean(series_count, na.rm =TRUE), digits = 1), 
               avg_length=round(mean(series_span, na.rm = TRUE), digits = 1))
 
-## Plot of samples by species
+# Plot of samples by species
 species_count <- sample_info %>%
     group_by(genus_species) %>%
     summarize(species_count=n(), patients=length(unique(patient_code))) %>%

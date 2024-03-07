@@ -1,27 +1,21 @@
 ## ---------------------------
-## Script name: redcap_delete_record.R
-##
-## Purpose of script: Delete specified records by API
-##
+## Purpose: Delete specified records by API
 ## Author: Nancy Scott
-##
-## Date Created: 2023-12-04
-##
 ## Email: scot0854@umn.edu
-
+## ---------------------------
 library(jsonlite)
 
-# redcap report IDs
+# Redcap report IDs
 samples <- '58043'
 genes <- '58048'
 
-# api
+# API
 token <- ""
-url <- "https://redcap.ahc.umn.edu/api/"
+api_url <- "https://redcap.ahc.umn.edu/redcap/api/"
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-    url <- "https://redcap.ahc.umn.edu/api/"
+    url <- api_url 
     formData <- list("token"=token,
                      content='report',
                      format='csv',
@@ -42,13 +36,13 @@ sample_info <- import_report(samples) %>%
     filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
-# get report of interest
+# Get report of interest
 gene_vars <- import_report(genes) %>%
     filter(redcap_repeat_instrument != "NA") %>%
     select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
     left_join((sample_info %>% select(primary_id, genus_species)))
 
-# filter to what needs to be removed
+# Filter to what needs to be removed
 glab_problem_variants <- gene_vars %>% 
     filter(genus_species == "Candida glabrata", gene == "HOS2")
 
@@ -62,7 +56,7 @@ for(i in 2:length(glab_problem_variants$primary_id)){
                    repeat_instance = as.character(glab_problem_variants$redcap_repeat_instance[i]),
                    returnContent='count'
   )
-  response <- httr::POST(url, body = formData, encode = "form")
+  response <- httr::POST(api_url, body = formData, encode = "form")
   #result <- httr::content(response, as="text")
   #print(result)
 }

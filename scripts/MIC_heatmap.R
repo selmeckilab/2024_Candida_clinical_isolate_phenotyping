@@ -1,37 +1,26 @@
 ## ---------------------------
-## Script name: MIC_heatmap.R
-##
-## Purpose of script: Take MIC_calcs.R values as input and plot 
-## Selmecki-style heatmap of MICs (96-well layout style)
-##
+## Purpose: Take MIC_calcs.R values as input, plot Selmecki-style MIC heatmap 
 ## Author: Nancy Scott
-##
-## Date Created: 2022-10-07
-##
 ## Email: scot0854@umn.edu
-##
 ## ---------------------------
-## Notes: Created to modularize calculations vs plotting functions
-## Requires MIC_calcs output to be available in env
-## Axis labels are blank to be added as a layer for individual projects
-## ---------------------------
-options(scipen = 999) # To view outputs in non-scientific notation
+options(scipen = 999) 
 ## ---------------------------
 ## load packages
 library(tidyverse)
 library(patchwork)
 library(gtools)
 ## ---------------------------
+# Create empty variable for optional use in MIC_SMG_plots_redcap.R
 exclude <- c("")
 
-# proper sorting of strain IDs for plotting
+# Proper sorting of strain IDs for plotting
 strain_order <- function(mic_cut){
     mic_cut %>%
     filter(!strain %in% exclude) -> mic_cut
     mixedsort(mic_cut$strain)
 }
 
-# basic qc plot for data exploration
+# Basic qc plot for data exploration
 mic_boxplot <- function(tidy_mic){
     tidy_mic$strain <- toupper(tidy_mic$strain)
     tidy_mic %>%
@@ -64,8 +53,8 @@ plotting_coords <- function(final_od, mic_cut, mic_cutpoint, strain_order){
                           mic_cut_x=mic_cut_x, 
                           mic_cut_xend=(mic_cut_x))
 }
-# plot with strains on x-axis, concentration on y-axis, no labels
 
+# Plot with strains on x-axis, concentration on y-axis, no labels
 mic_plot <- function(final_od, strain_order, plotting_coords){
     max(final_od$mean_norm_OD) -> scale_lim
     print(scale_lim)
@@ -95,7 +84,7 @@ mic_plot <- function(final_od, strain_order, plotting_coords){
       coord_equal()
 }
 
-# bar plot scaled to match MIC heatmap
+# Bar plot scaled to match MIC heatmap
 smg_plot <- function(smg_subset, strain_order){
     smg_subset %>%
       filter(!strain %in% exclude) %>%
@@ -116,6 +105,6 @@ smg_plot <- function(smg_subset, strain_order){
       coord_fixed(ratio = 1.4) +
       scale_y_discrete(limits = strain_order) +
       scale_x_continuous(limits = c(0,1),
-                         breaks = c(0, 0.5, 1.0), 
-                         labels=c("0", "0.5", "1"))
+                         breaks = c(0, 0.25, 0.5, 0.75, 1.0), 
+                         labels=c("0", "", "0.5", "", "1"))
 }

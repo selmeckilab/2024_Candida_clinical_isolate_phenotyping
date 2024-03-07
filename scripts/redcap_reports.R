@@ -1,20 +1,14 @@
 ## ---------------------------
-## Script name: redcap_reports.R
-##
-## Purpose of script: Pull, filter, subset REDCap reports
-##
+## Purpose: Pull, filter, subset REDCap reports, quick MLST bar plots
 ## Author: Nancy Scott
-##
-## Date Created: 2023-11-28
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
-## load packages
+## Load packages
 library(tidyverse)
 library(writexl)
 library(paletteer)
 
-# redcap report IDs
+# Redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
 growth_curves <- '58045'
@@ -34,7 +28,7 @@ patient_colors <- c(paletteer_d("ggsci::default_igv"),
 
 # Function to import report from redcap
 import_report <- function(report_number) {
-  url <- "https://redcap.ahc.umn.edu/api/"
+  url <- "https://redcap.ahc.umn.edu/redcap/api/"
   formData <- list("token"=token,
                    content='report',
                    format='csv',

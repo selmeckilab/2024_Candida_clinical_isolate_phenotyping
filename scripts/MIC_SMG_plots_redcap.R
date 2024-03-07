@@ -1,12 +1,6 @@
 ## ---------------------------
-## Script name: MIC_SMG_plots_redcap.R
-##
-## Purpose of script: Calculate, plot and upload MIC and SMG data
-##
+## Purpose: Calculate, plot and upload MIC and SMG data to REDCap
 ## Author: Nancy Scott
-##
-## Date Created: 2023-01-07
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
@@ -15,24 +9,26 @@
 ## ---------------------------
 options(scipen = 999)
 ## ---------------------------
-## load packages
+# load packages
 library(jsonlite)
 ## ---------------------------
+
 # Functions
 source("scripts/MIC_calc_functions.R")
 source("scripts/MIC_heatmap.R")
 
-# VARIABLES - READ THESE CAREFULLY!
+# VARIABLES - READ THESE CAREFULLY!!!!!!!!!!!!!!!!!!!!!!
 # For automatic uploading to REDcap
 api_token <- ""
-api_url <-  "https://redcap.ahc.umn.edu/api/"
+api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Enter drug and spreadsheet data
-input_drug <- "flc"
+input_drug <- "amb"
 replicates <- 3
-metadata_tab <- 2 
-mic_spreadsheet <-"data/MIC/2024-02-08_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2024-02-09_EW_SMG48_RPMI35.xlsx"
+od_tab <- 1  # Excel tab of OD values
+metadata_tab <- 2 # Excel tab of metadata
+mic_spreadsheet <-"data/MIC/2024-02-27_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2024-02-28_EW_SMG48_RPMI35.xlsx"
 
 # Type either "strain" or "concentration" for col names, depending on plate layout
 column_names <- "strain"
@@ -57,14 +53,14 @@ concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32)
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 
 ################################################################################
-# Load metadata - specify which tab it is (usually 2) and add vals from above
+# Load metadata
 meta.frame <- read_excel(mic_spreadsheet, 
                          sheet = metadata_tab)
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=cols_used - length(input_drug)))
 
 meta.frame$concentration <- c(concentration, rep(NA, times=cols_used - length(concentration)))
 
-## Set vars for use below
+# Set vars for use below
 meta_names = case_when(column_names=="strain" ~ "strain",
                        column_names=="concentration" ~ "concentration")
 meta_col = case_when(column_names!="strain" ~ "strain",
@@ -86,6 +82,7 @@ x_axis_angle <- 0
 # Loop over each plate
 for(i in 1:replicates){
   d.frame <- read_excel(mic_spreadsheet, 
+                        sheet = od_tab,
                        range = meta.frame[[tolower(input_drug)]][i])
   
   # Colnames set from input variable 
@@ -130,9 +127,10 @@ if(exists("strain_list")) {
 mic_boxplot(drug)
 ################################################################################
 # Read in SMG ODs and reuse metadata from MIC spreadsheet
-smg_range <- read_excel(smg_spreadsheet, sheet=2)
+smg_range <- read_excel(smg_spreadsheet, sheet=metadata_tab)
 for(i in 1:replicates){
-    d.frame <- read_excel(smg_spreadsheet, 
+    d.frame <- read_excel(smg_spreadsheet,
+                          sheet = od_tab,
                           range = smg_range[[tolower(input_drug)]][i])
     
     # Colnames set from input variable 

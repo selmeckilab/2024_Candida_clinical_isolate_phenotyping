@@ -1,17 +1,9 @@
 ## ---------------------------
-## Script name: gc_functions.R
-##
-## Purpose of script: use growthcurver for gc metric calculation and modify
-## Mew's custom plotting script
-##
+## Purpose: use growthcurver for gc metric calculation, modify Mew's custom plotting script
 ## Author: Nancy Scott
-##
-## Date Created: 2022-09-18
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Notes:
-##
 ## ---------------------------
 options(scipen = 6, digits = 4) # To view outputs in non-scientific notation
 ## ---------------------------
@@ -35,7 +27,7 @@ clean_growthcurver <- function(plate_reader_file){
         mutate(time = time/60)
 }
 
-# read in plate data, wrangle correct time to hours for plotting, and tidy/pivot longer
+# Read in plate data, wrangle correct time to hours for plotting, and tidy/pivot longer
 growth_curve <- function(plate_reader_file){
     read_excel(plate_reader_file, sheet=1) %>%
     mutate(time = hour(Time) * 60 + minute(Time)) %>%
@@ -47,13 +39,13 @@ growth_curve <- function(plate_reader_file){
         pivot_longer(!time, names_to = "well", values_to = "OD") #keep time value per each well
 }
 
-# read in metadata
+# Read in metadata
 samples <- function(plate_reader_file, col_types=NULL){
     read_excel(plate_reader_file, col_types, sheet=2)
    # ID <- plate_reader_file$sample
 }
 
-# join tidied plate and metadata
+# Join tidied plate and metadata
 link_metadata <- function(growth_curve, samples, plate){
     growth_curve %>%
     inner_join(samples, by="well") %>%
@@ -61,7 +53,7 @@ link_metadata <- function(growth_curve, samples, plate){
         
 }
 
-# use SummarizeGrowth function per sample/condition to fit logistic curve, retrieve relevant vals
+# Use SummarizeGrowth function per sample/condition to fit logistic curve, retrieve relevant vals
 gc_summary_vals <- function(final_gc){
     final_gc %>%
         mutate(condition = as.factor (condition)) %>%

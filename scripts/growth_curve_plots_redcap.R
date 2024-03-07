@@ -1,38 +1,29 @@
 ## ---------------------------
-## Script name: growth_curve_plots_redcap.R
-##
-## Purpose of script: get growthcurve summaries and make basic GC plots 
-##
+## Purpose: get growthcurve summaries and basic GC plots 
 ## Author: Nancy Scott
-##
-## Date Created: 2023-08-02
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
-## Notes: Adapted from C. lusitaniae growth curve scripts
-##   
+## Notes: 
 ## ---------------------------
 options(scipen = 999) 
 ## ---------------------------
 ## load packages
 library(jsonlite)
 library(paletteer)
-################################################################################
-## Get spreadsheet cleaning and gc metric functions
+
+# Get spreadsheet cleaning and gc metric functions
 source("~/umn/growth_curves/gc_functions.R")
-###############################################################################
-## Input vars
+
+# Input vars
 plate_reader_file <- "data/growth_curve/2024-01-24_MEC_GC30.xlsx"
 plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
 api_token <- ""
-api_url <-  "https://redcap.ahc.umn.edu/api/"
+api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
-################################################################################
 ## Read in plate, get sample metadata and check fit of logistic curve
-
 plate_od <- clean_growthcurver(plate_reader_file) %>%
     filter(time <= 48) # make sure all plates are same time span
 
@@ -42,8 +33,7 @@ plate_data <- SummarizeGrowthByPlate(plate_od)
 
 colnames(plate_data)[colnames(plate_data)=="sample"] <- 'well'
 
-###############################################################################
-# tidy, add metadata and summarize values
+# Tidy, add metadata and summarize values
 plate_summary <- plate_data %>%
     inner_join(sample_data, by = "well") %>%
     group_by(primary_id) %>%
@@ -58,10 +48,7 @@ plate_summary <- plate_data %>%
               mean_aucl = round(mean(auc_l), digits = 3), 
               mean_auce = round(mean(auc_e), digits = 3))
 
-###############################################################################
-###############################################################################
-# basic GC plot
-
+# Basic GC plot
 input_data <- growth_curve(plate_reader_file)
 full_gc_data <- link_metadata(input_data, sample_data, plate = 1)
 
@@ -86,6 +73,7 @@ gc_mean <- gc_norm %>%
     mutate(primary_id = as.factor(primary_id)) %>%
     mutate(primary_id = fct_relevel(primary_id, mixedsort))
 
+# Plot by species
 spec <- c("Candida glabrata")
 ctrl <- "" # or empty str if not plotting
 full_plot <- gc_mean %>%
@@ -102,12 +90,10 @@ full_plot <- gc_mean %>%
     ylab("Mean OD600") +
     labs(title = bquote(italic(.(spec))~"growth in YPAD at 30C"))
 
-
 ggsave(paste0("images/2023_growth_curves/",gc_date,"_C",str_split_i(spec, " ", 2),"_GC30.png"), full_plot, device = png, width = 8, height = 5.7, units = "in",  dpi= 300)
 
-
-
-facet_plot <- gc_mean %>%
+# Facet plot of all isolates on plate
+gc_mean %>%
     ggplot(aes(x = time, y = mean_OD, color = species)) +
     geom_point(show.legend = TRUE) +
     geom_errorbar(aes(ymax=(mean_OD + sd_OD), ymin=(mean_OD - sd_OD)), alpha=0.2, show.legend = FALSE) +
@@ -122,8 +108,7 @@ facet_plot <- gc_mean %>%
 
 ggsave(paste0("images/2023_growth_curves/",gc_date,"_faceted_MEC_GC30.png"), facet_plot, width = 10, height = 4, units = "in", dpi = 300)
 
-# redcap upload work 
-
+# Redcap upload
 redcap_media <- case_when(toupper(sample_data$media[1])== "YPAD" ~ 1,
                          toupper(sample_data$media[1])== "RPMI" ~ 3)
 
@@ -135,7 +120,7 @@ redcap_reader <- case_when(plate_reader_sn == "1803065" ~ 0,
                            plate_reader_sn == "23012423" ~ 1,
                            plate_reader_sn == "23012512" ~ 2,
                            plate_reader_sn == "151117B" ~ 3) 
-#
+
 for(i in 1:length(plate_summary$primary_id)){
     
     record <- c(

@@ -1,27 +1,16 @@
 ## ---------------------------
-## Script name: antifungal_data.R
-##
-## Purpose of script: Analyze redcap and antifungal exposure data jointly
-##
+## Purpose: Summarize and plot MEC isolate (EUCAST) MIC and SMG data by species 
 ## Author: Nancy Scott
-##
-## Date Created: 2024-01-03
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 options(scipen = 999)
 
-## load packages
+## Load packages
 library(tidyverse)
 library(readxl)
-library(writexl)
 library(patchwork)
 
-# local antifungal data
-af_spreadsheet <- "data/metadata/MEC_antifungal_history.xlsx"
-breakpoint_file <- "data/metadata/Candida_eucast_breakpoints.xlsx"
-
-# redcap report IDs
+# Redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
 growth_curves <- '58045'
@@ -32,9 +21,9 @@ token <- ''
 species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
                     "#882255","#BBBBBB", "#AA4499", "#DDCC77", "black")
 
-# function to import report from redcap
+# Function to import report from redcap
 import_report <- function(report_number) {
-  url <- "https://redcap.ahc.umn.edu/api/"
+  url <- "https://redcap.ahc.umn.edu/redcap/api/"
   formData <- list("token"=token,
                    content='report',
                    format='csv',
@@ -69,24 +58,16 @@ gene_vars <- import_report(genes) %>%
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg) %>% 
+    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg, qc_ok) %>% 
     left_join((sample_info %>% 
                    select(primary_id, genus_species, series_id)), 
               by=join_by(primary_id))
 
-################################################################################
-# Data wrangling and summary plots.
-
-#mic_info$mic50 <- case_when(grepl(">", mic_info$mic50) ~ (as.numeric(sub("[^-.0-9]", "", mic_info$mic50)) + 0.001),
-#                              .default = (as.numeric(mic_info$mic50)))
-
 mic_info <- mic_info %>% 
-    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123"))) %>%
-    #filter(!(drug=="amphotericin B" & mic_date %in% c(as.Date("2023-07-20"), as.Date("2023-08-09"),
-                                                #      as.Date("2023-08-15"), as.Date("2023-08-24")))) %>% 
+    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
     inner_join(sample_info %>% select(primary_id, patient_code))
 
-# for ordering species and colors for consistency
+# For ordering species, colors, drug labels and levels
 species_count <- sample_info %>%
     group_by(genus_species) %>%
     summarize(species_count=n()) %>%
@@ -105,6 +86,7 @@ mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.
 
 mic_info$genus_species <- factor(mic_info$genus_species, levels = species_count$genus_species)
 
+################################################################################
 # Plot MIC and SMG per species per drug.
 flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) + 
     geom_bar(aes(fill=genus_species), just = 1) +
@@ -114,7 +96,7 @@ flc <- ggplot(mic_info %>% filter(drug=="fluconazole"), aes(x=mic50)) +
     xlab(NULL)+
     #ylab(NULL)+
     #xlab("MIC50") +
-    ylab("\nFluconazole\n") +
+    ylab("Fluconazole\n\n") +
     theme(strip.text = element_text(face = "italic", size =8))+
     theme(panel.grid.major.x = element_blank()) + 
     theme(axis.text.x = element_text(angle=90, vjust = -0.3)) +
@@ -137,7 +119,7 @@ mcf <- ggplot(mic_info %>% filter(drug=="micafungin"), aes(x=mic50)) +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
     xlab(NULL)+
-    ylab("Number of isolates\nMicafungin\n")+
+    ylab("Micafungin\n\nCount of isolates")+
     theme(strip.text = element_blank()) +
     theme(axis.text.x = element_text(angle=90, vjust = -0.4)) +
     theme(panel.grid.major.x = element_blank()) + 
@@ -153,8 +135,8 @@ amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) +
     scale_fill_manual(values=species_colors, guide = "none") +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
-    xlab("\nMIC value") +
-    ylab("\nAmphotericin B\n") +
+    xlab("\nMIC, ug/mL") +
+    ylab("Amphotericin B\n\n") +
     #ylab(NULL) +
     theme(strip.text = element_blank())+
     theme(axis.text.x = element_text(angle=90, vjust=-0.5)) +
@@ -203,55 +185,3 @@ ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_SMG_summary.png"),
        width = 11.5, 
        height=7, 
        units="in")
-
-################################################################################
-# Drug exposure data
-
-# Process de-identified antifungal relative timeframe data
-antifungals <- read_xlsx(af_spreadsheet)
-
-remote_exposure <- antifungals %>% 
-    filter(relative_start_days <= 0, relative_collection_day == 0)
-
-no_results <- sample_info %>% filter(!(primary_id %in% antifungals$primary_id)) %>% 
-    select(primary_id, genus_species, relative_days, patient_code, series_id, secondary_id)
-
-################################################################################
-# Resistance/variant data wrangling
-
-mic_summary <- mic_info %>%
-    group_by(drug) %>%
-    count(genus_species)
-
-resistant_isolates <- mic_info %>% 
-    group_by(drug, genus_species) %>% 
-    filter(eucast_breakpoint=="R")
-
-res_summary <- resistant_isolates %>% 
-    group_by(drug, genus_species) %>%
-    count(patient_code)
-
-res_frequency <- mic_summary %>% 
-    inner_join(res_summary, by=join_by(drug,genus_species)) #%>% 
-    #mutate(resistant = n.y/n.x)
-
-patient_counts <- mic_info %>%
-    group_by(drug, genus_species) %>%
-    summarize(patients=length(unique(patient_code)))
-
-patient_res <- resistant_isolates %>% 
-    group_by(drug, genus_species) %>%
-    summarize(patient_res=length(unique(patient_code)))
-
-patient_freq <- patient_counts %>% 
-    inner_join(patient_res, by=join_by(drug, genus_species)) %>% 
-    mutate(patient_res_freq = patient_res/patients) %>% 
-    arrange(genus_species, drug)
-    
-non_driver_vars <- gene_vars %>% 
-    filter(!primary_id %in% resistant_isolates$primary_id) %>% 
-    left_join(sample_info %>% select(primary_id, series_id))
-
-possible_drivers <- gene_vars %>% 
-    filter(!gene_pos %in% non_driver_vars$gene_pos) %>% 
-    left_join(sample_info %>% select(primary_id, series_id))
