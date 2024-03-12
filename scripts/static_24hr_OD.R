@@ -4,7 +4,31 @@
 ## Email: scot0854@umn.edu
 ## ---------------------------
 options(scipen = 999)
-## ---------------------------
+
+# API variables
+api_token <- ""
+api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
+
+# Spreadsheet variables
+input_drug <- c("flc","mcf", "amb")
+replicates <- 3
+od_tab <- 1  # Excel tab of OD values
+metadata_tab <- 2 # Excel tab of metadata
+mic_spreadsheet <-"data/MIC/2023-12-05_EW_MIC24_RPMI35.xlsx"
+
+# Type either "strain" or "concentration" for col names, depending on plate layout
+column_names <- "strain"
+
+# Placeholder concentrations, only care about 0
+concentration <- c(0, 0.016, 0.032, 0.064, 0.125, 0.256, 0.5, 1)
+
+control_strains <- c("AMS5123", "AMS5122")
+
+# Libraries
+library(readxl)
+library(jsonlite)
+
+# Functions
 read_meta <- function(spreadsheet,tab){
     read_excel(spreadsheet, 
                sheet = tab,
@@ -12,23 +36,10 @@ read_meta <- function(spreadsheet,tab){
 }
 source("scripts/MIC_heatmap.R")
 
-# Enter drug and spreadsheet data
-input_drug <- c("flc","mcf", "amb")
-replicates <- 3
-od_tab <- 1  # Excel tab of OD values
-metadata_tab <- 2 # Excel tab of metadata
-mic_spreadsheet <-"data/MIC/2023-12-19_EW_MIC24_RPMI35.xlsx"
-
-# Type either "strain" or "concentration" for col names, depending on plate layout
-column_names <- "strain"
-
-concentration <- c(0, 0.016, 0.032, 0.064, 0.125, 0.256, 0.5, 1)
-
-control_strains <- c("AMS5123", "AMS5122")
+# Load metadata
 
 mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
-################################################################################
-# Load metadata
+
 meta.frame <- read_meta(mic_spreadsheet, metadata_tab)
 
 meta.frame$concentration <- c(concentration, rep(NA, times=12 - length(concentration)))
@@ -39,8 +50,7 @@ meta_names = case_when(column_names=="strain" ~ "strain",
 meta_col = case_when(column_names!="strain" ~ "strain",
                      column_names !="concentration" ~ "concentration")
     
-################################################################################
-# Loop over each plate
+# Loop over all plates and concatenate
 for(j in 1:3){
   j_drug <- input_drug[j]
   for(i in 1:replicates){
@@ -65,11 +75,13 @@ for(j in 1:3){
     assign(paste0("rep", j_drug, i), d.frame)
   }
 }
-# Pull together and tidy data
+
 drug_data <- bind_rows(mget(ls(pattern = "^rep\\w+\\d+$")))
+
+# Tidy data
 drug <- pivot_longer(drug_data, 
                     names_to = meta_names,
-                    values_to = "OD600", 
+                    values_to = "OD530", 
                     cols = -c(all_of(meta_col), plate, drug, media, temp)) 
 
 # BLANKS: this checks for "blank" labeled wells in metadata
@@ -81,18 +93,56 @@ drug <- drug %>%
                                      .default = concentration))
 drug$concentration <-factor(tolower(drug$concentration), levels = mixedsort(unique(drug$concentration))) 
 
-# consider min bg instead of mean
-# re-do for 2024 vals or just skip?
-background <- drug %>% 
-    filter(concentration=="blank", OD600 <0.17) %>% 
-    summarize(mean_bg = mean(OD600))
-
-no_drug <- drug %>% 
-    filter(concentration == 0) %>% 
-    mutate(OD600 = OD600 - background$mean_bg) %>% 
-    group_by(strain) %>% 
-    summarise( mean_OD=mean(OD600), sd_od = sd(OD600))
-
 mic_boxplot(drug)
 
-write_csv(no_drug, paste0(mic_date, "_no_drug_norm_OD.csv"))
+# Is there a lot of variation in RPMI compared to YPAD?
+# Removing some of the higher vals before averaging
+background <- drug %>% 
+    filter(tolower(concentration)=="blank" | tolower(strain)=="blank", OD530 <0.17) %>% 
+    summarize(mean_bg = mean(OD530))
+
+background$mean_bg
+
+# Get corrected values for upload
+no_drug <- drug %>% 
+    filter(concentration == 0, tolower(strain)!="blank") %>% 
+    mutate(OD530 = OD530 - background$mean_bg) %>% 
+    group_by(strain) %>% 
+    summarise( mean_OD=round(mean(OD530), digits=3), sd_OD = round(sd(OD530), digits = 3))
+
+# For each strain, create new record and send form 
+rpmi_temp <- case_when(meta.frame$temp[1]==30 ~ 0,
+                       meta.frame$temp[1]==35 ~ 1,
+                       meta.frame$temp[1]==37 ~2)
+
+for(i in 1:length(no_drug$strain)){
+    primary_id=no_drug$strain[i]
+    
+    record <- c(
+        primary_id = primary_id,
+        redcap_repeat_instrument = "rpmi_growth_data",
+        redcap_repeat_instance = "new",
+        rpmi_date = mic_date,
+        rpmi_temp = rpmi_temp,
+        mean_static_od_24h = as.character(no_drug$mean_OD[no_drug$strain==primary_id]),
+        sd_static_od_24h = as.character(no_drug$sd_OD[no_drug$strain==primary_id]),
+        rpmi_growth_data_complete = 2
+        )
+    
+    result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
+    
+    formData <- list("token"=api_token,
+                     content='record',
+                     action='import',
+                     format='json',
+                     type='flat',
+                     overwriteBehavior='normal',
+                     forceAutoNumber='false',
+                     data=result_data,
+                     returnContent='count',
+                     returnFormat='json'
+    )
+    response <- httr::POST(api_url, body = formData, encode = "form")
+    result <- httr::content(response)
+    print(result)
+}
