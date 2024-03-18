@@ -40,7 +40,6 @@ import_report <- function(report_number) {
 # Pull sample data
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>% 
-    filter(primary_id != "MEC103") %>%
     filter(isolate_type == "clinical") 
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")

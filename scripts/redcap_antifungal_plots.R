@@ -43,7 +43,6 @@ import_report <- function(report_number) {
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>%
-    filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
@@ -65,7 +64,9 @@ mic_info <- import_report(mic_results) %>%
 
 mic_info <- mic_info %>% 
     filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
-    inner_join(sample_info %>% select(primary_id, patient_code))
+    inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
+    group_by(primary_id, drug) %>% 
+    slice_head()
 
 # For ordering species, colors, drug labels and levels
 species_count <- sample_info %>%
@@ -135,7 +136,7 @@ amb <- ggplot(mic_info %>% filter(drug=="amphotericin B"), aes(x=mic50)) +
     scale_fill_manual(values=species_colors, guide = "none") +
     facet_wrap(.~genus_species, nrow = 1)+
     theme_bw() +
-    xlab("\nMIC, ug/mL") +
+    xlab("\nMIC, \u03BCg/mL") +
     ylab("Amphotericin B\n\n") +
     #ylab(NULL) +
     theme(strip.text = element_blank())+

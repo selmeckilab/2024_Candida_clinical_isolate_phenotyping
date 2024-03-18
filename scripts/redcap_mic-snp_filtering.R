@@ -20,6 +20,7 @@ samples <- '58043'
 mic_results <- '58044'
 growth_curves <- '58045'
 genes <- '58048'
+rpmi_od <- '64098'
 
 token <- ''
 
@@ -45,10 +46,13 @@ import_report <- function(report_number) {
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>%
-    filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
+
+# OD data
+od_vals <- import_report(rpmi_od) %>%
+    select(-c(starts_with('redcap_repeat'))) 
 
 # SNP data
 gene_vars <- import_report(genes) %>%
@@ -66,9 +70,14 @@ mic_info <- import_report(mic_results) %>%
               by=join_by(primary_id))
 
 # Subset to RPMI data with valid control results
+# Slice head removes repeated assays (for now, filtering isn't working)
 mic_info <- mic_info %>% 
     filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
-    inner_join(sample_info %>% select(primary_id, patient_code))
+    inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
+    group_by(primary_id, drug) %>% 
+    slice_head()
+
+mic_info <- mic_info %>% left_join(od_vals, by=c("primary_id", "mic_date"="rpmi_date"))
 
 # For ordering species and drug levels
 species_count <- sample_info %>%
@@ -76,7 +85,7 @@ species_count <- sample_info %>%
     summarize(species_count=n()) %>%
     arrange(desc(species_count))
 
-mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.125",
+mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.128",
                                                   "0.256", "0.5", "1", ">1", "2", 
                                                   "4", "8", "16", "32", ">32"))
 
@@ -95,37 +104,43 @@ no_results <- sample_info %>% filter(!(primary_id %in% antifungals$primary_id)) 
     select(primary_id, genus_species, relative_days, patient_code, series_id, secondary_id)
 
 ################################################################################
-# Group isolates by EUCAST category
+# Summary tables for resistant isolates
 
-mic_summary <- mic_info %>%
+# All isolates done for each drug?
+isolate_counts <- mic_info %>%
     group_by(drug) %>%
     count(genus_species)
 
+# All resistant isolates
 resistant_isolates <- mic_info %>% 
-    group_by(drug, genus_species) %>% 
     filter(eucast_breakpoint=="R")
 
-res_summary <- resistant_isolates %>% 
-    group_by(drug, genus_species) %>%
-    count(patient_code)
-
-res_frequency <- mic_summary %>% 
-    inner_join(res_summary, by=join_by(drug,genus_species)) 
+resistant_series <- mic_info %>% 
+    group_by(patient_code, drug) %>% 
+    filter(any(eucast_breakpoint=="R"))
 
 patient_counts <- mic_info %>%
     group_by(drug, genus_species) %>%
     summarize(patients=length(unique(patient_code)))
 
-patient_res <- resistant_isolates %>% 
+patient_resistance <- resistant_isolates %>% 
     group_by(drug, genus_species) %>%
     summarize(patient_res=length(unique(patient_code)))
 
+patient_differences <- resistant_series %>% 
+    group_by(patient_code, series_id, drug, eucast_breakpoint) %>%
+    summarise(patient_diffs = n())
+
+# Frequency of resistant isolates among patients
 patient_freq <- patient_counts %>% 
-    inner_join(patient_res, by=join_by(drug, genus_species)) %>% 
+    inner_join(patient_resistance, by=join_by(drug, genus_species)) %>% 
     mutate(patient_res_freq = patient_res/patients) %>% 
     arrange(genus_species, drug)
 
+################################################################################
+# Candidate AMR gene SNPs
 # Variants found in sensitive isolates 
+
 non_driver_vars <- gene_vars %>% 
     filter(!primary_id %in% resistant_isolates$primary_id) %>% 
     left_join(sample_info %>% select(primary_id, series_id))
@@ -134,3 +149,6 @@ non_driver_vars <- gene_vars %>%
 possible_drivers <- gene_vars %>% 
     filter(!gene_pos %in% non_driver_vars$gene_pos) %>% 
     left_join(sample_info %>% select(primary_id, series_id))
+
+################################################################################
+# How does low OD in no-drug control relate to resistance status?
