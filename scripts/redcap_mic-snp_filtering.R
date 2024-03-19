@@ -85,7 +85,7 @@ species_count <- sample_info %>%
     summarize(species_count=n()) %>%
     arrange(desc(species_count))
 
-mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.128",
+mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.125",
                                                   "0.256", "0.5", "1", ">1", "2", 
                                                   "4", "8", "16", "32", ">32"))
 
@@ -115,9 +115,23 @@ isolate_counts <- mic_info %>%
 resistant_isolates <- mic_info %>% 
     filter(eucast_breakpoint=="R")
 
-resistant_series <- mic_info %>% 
-    group_by(patient_code, drug) %>% 
-    filter(any(eucast_breakpoint=="R"))
+resistance_freqs <- mic_info %>% 
+    group_by(genus_species, drug) %>% 
+    summarize(all_count = length(unique(primary_id)),
+              res_count = sum(eucast_breakpoint=="R", na.rm = TRUE),
+              res_percent= round((sum(eucast_breakpoint=="R", na.rm = TRUE))/length(unique(primary_id)), digits = 3)*100) %>% 
+    filter(res_percent !=0)
+
+# Differences within series
+change_in_series <- mic_info %>% 
+    group_by(series_id, patient_code, drug) %>% 
+    filter(!is.na(series_id)) %>% 
+    filter(any(eucast_breakpoint=="R")) %>% 
+    summarize(totals = length(unique(primary_id)),
+              res = sum(eucast_breakpoint=="R", na.rm = TRUE),
+              int = sum(eucast_breakpoint=="I", na.rm = TRUE),
+              sens = sum(eucast_breakpoint=="S", na.rm = TRUE)) %>% 
+    filter(!(sens==0 & int==0))
 
 patient_counts <- mic_info %>%
     group_by(drug, genus_species) %>%
@@ -127,14 +141,10 @@ patient_resistance <- resistant_isolates %>%
     group_by(drug, genus_species) %>%
     summarize(patient_res=length(unique(patient_code)))
 
-patient_differences <- resistant_series %>% 
-    group_by(patient_code, series_id, drug, eucast_breakpoint) %>%
-    summarise(patient_diffs = n())
-
 # Frequency of resistant isolates among patients
 patient_freq <- patient_counts %>% 
     inner_join(patient_resistance, by=join_by(drug, genus_species)) %>% 
-    mutate(patient_res_freq = patient_res/patients) %>% 
+    mutate(patient_res_freq = round(patient_res/patients, digits = 3) *100) %>% 
     arrange(genus_species, drug)
 
 ################################################################################
@@ -152,3 +162,28 @@ possible_drivers <- gene_vars %>%
 
 ################################################################################
 # How does low OD in no-drug control relate to resistance status?
+
+od_sums <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
+    summarise(low_ods = sum(mean_static_od_24h < 0.31, na.rm = TRUE), 
+              high_ods = sum(mean_static_od_24h > 0.3, na.rm = TRUE))
+
+flc_only <- mic_info %>% filter(drug=="fluconazole") 
+flc_only$mic50 <- fct_drop(flc_only$mic50)
+flc_only$eucast_breakpoint <- factor(flc_only$eucast_breakpoint, levels=c("S", "I", "R"))
+
+flc_cor <- cor.test(x=as.numeric(flc_only$mic50), y = flc_only$mean_static_od_24h, method = 'spearman')
+flc_eucast_cor <- cor.test(x=as.numeric(flc_only$eucast_breakpoint), y = flc_only$mean_static_od_24h, method = 'spearman')
+    
+mcf_only <- mic_info %>% filter(drug=="micafungin")
+mcf_only$mic50 <- fct_drop(mcf_only$mic50)
+mcf_only$eucast_breakpoint <- factor(mcf_only$eucast_breakpoint, levels=c("S", "R", "IE (insufficient evidence"))
+
+mcf_cor <- cor.test(x=as.numeric(mcf_only$mic50), y = mcf_only$mean_static_od_24h, method = 'spearman')
+mcf_eucast_cor <- cor.test(x=as.numeric(mcf_only$eucast_breakpoint), y = mcf_only$mean_static_od_24h, method = 'spearman')
+
+amb_only <- mic_info %>% filter(drug=="amphotericin B")
+amb_only$mic50 <- fct_drop(amb_only$mic50)
+amb_only$eucast_breakpoint <- factor(amb_only$eucast_breakpoint, levels=c("S", "R", "IE (insufficient evidence"))
+
+amb_cor <- cor.test(x=as.numeric(amb_only$mic50), y = amb_only$mean_static_od_24h, method = 'spearman')
+amb_eucast_cor <- cor.test(x=as.numeric(amb_only$eucast_breakpoint), y = amb_only$mean_static_od_24h, method = 'spearman')
