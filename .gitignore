@@ -9,5 +9,5 @@
 *.xlsx
 *.png
 *.tiff
-/data/
-/images/
+data/
+images/
