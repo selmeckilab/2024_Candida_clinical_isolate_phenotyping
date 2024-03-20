@@ -1,20 +1,14 @@
 ## ---------------------------
-## Purpose: Pull, filter, subset REDCap reports, quick MLST bar plots
+## Purpose: MLST bar plots
 ## Author: Nancy Scott
 ## Email: scot0854@umn.edu
 ## ---------------------------
 ## Load packages
 library(tidyverse)
-library(writexl)
 library(paletteer)
 
 # Redcap report IDs
 samples <- '58043'
-mic_results <- '58044'
-growth_curves <- '58045'
-chef_data <- '58046'
-genes <- '58048'
-avail_seq_data <- '58050'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
@@ -46,61 +40,8 @@ import_report <- function(report_number) {
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>%
-    filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
-################################################################################
-# CHEF gel results
-chef_done <- import_report(chef_data) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gel_date, blot_prepared) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("gel_date", "blot_prepared"),
-                names_vary = "slowest")
-
-# No CHEF results yet
-todo <- sample_info %>%
-    filter(isolate_type == "clinical") %>%
-    anti_join(chef_done)
-
-# Export chef-todo list
-#write_xlsx(todo,paste0(Sys.Date(),"_CHEF_todo.xlsx"))
-
-################################################################################
-# MIC and SMG results
-mic_info <- import_report(mic_results) %>%
-    filter(redcap_repeat_instrument != "NA", mic_media == "RPMI") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_date, mic50, eucast_breakpoint, smg) %>% 
-    left_join((sample_info %>% select(primary_id, genus_species, series_id)), by=join_by(primary_id)) 
-
-# MIC to-do list
-mic_to_do <- sample_info %>% 
-    filter(isolate_type == "clinical") %>%
-    anti_join(mic_info)
-
-################################################################################
-# Growth curve results
-gc <- import_report(growth_curves) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gc_date, drug_used, gc_temp, gc_time, k, r, t_gen, auc_l)
-
-################################################################################
-# MSI location if sequencing data exists
-seq_info <- import_report(avail_seq_data) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, msi_path_r1, msi_path_r2, msi_long_read_path) %>%
-    pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("msi_path_r1", "msi_path_r2", "msi_long_read_path"),
-                names_vary = "slowest")
-
-################################################################################
-# SNP data
-gene_vars <- import_report(genes) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
-    left_join((sample_info %>% select(primary_id, genus_species)))
-
-################################################################################
 # C. albicans MLST types and plot
 albicans_sts <- import_report(calb_mlst) %>% 
     select(primary_id, st, aat1a_exact_match, acc1_exact_match, adp1_exact_match,
@@ -132,7 +73,7 @@ ggsave("images/Calbicans/Calbicans_MLST_count.png", st_plot,
        device = png, dpi=300, bg="white",
        width = 8, height = 5, units = "in")
 
-####################################################################
+
 # C. glabrata MLST types and plot
 glabrata_sts <- import_report(cglab_mlst) %>% 
     select(primary_id, st, fks_exact_match, leu2_exact_match, nmt1_exact_match,

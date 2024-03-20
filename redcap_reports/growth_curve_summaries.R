@@ -1,12 +1,6 @@
 ## ---------------------------
-## Script name: growth_curve_summaries.R
-##
-## Purpose of script: Summary plots of growth curve metrics
-##
+## Purpose: Summary plots of growth curve metrics
 ## Author: Nancy Scott
-##
-## Date Created: 2024-01-15
-##
 ## Email: scot0854@umn.edu
 ## ---------------------------
 options(scipen = 999) 
@@ -50,7 +44,6 @@ import_report <- function(report_number) {
 # Sample ID, species, series and cluster IDs
 sample_info <- import_report(samples) %>%
     select(-c(starts_with('redcap_repeat'))) %>%
-    filter(!primary_id %in% c("MEC103", "MEC113")) %>%
     filter(isolate_type == "clinical")
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
