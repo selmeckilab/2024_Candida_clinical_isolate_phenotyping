@@ -12,10 +12,10 @@ library(jsonlite)
 library(paletteer)
 
 # Get spreadsheet cleaning and gc metric functions
-source("~/umn/growth_curves/gc_functions.R")
+source("~/umn/clinical_isolate_redcap/MIC_growth_curve/gc_functions.R")
 
 # Input vars
-plate_reader_file <- "data/growth_curve/2024-01-24_MEC_GC30.xlsx"
+plate_reader_file <- "data/growth_curve/2023-10-11_MEC_GC30.xlsx"
 plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
@@ -25,7 +25,7 @@ api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 ## Read in plate, get sample metadata and check fit of logistic curve
 plate_od <- clean_growthcurver(plate_reader_file) %>%
-    filter(time <= 48) # make sure all plates are same time span
+    filter(time <= 24.1) # make sure all plates are same time span
 
 sample_data <- samples(plate_reader_file)
 
