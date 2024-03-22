@@ -62,10 +62,13 @@ mic_info <- import_report(mic_results) %>%
                    select(primary_id, genus_species, series_id)), 
               by=join_by(primary_id))
 
+# Subset to RPMI data with valid control results
+# Slice head removes repeated assays, assuming most recent is best (for now, filtering isn't working)
 mic_info <- mic_info %>% 
     filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
     inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
     group_by(primary_id, drug) %>% 
+    arrange(desc(mic_date)) %>% 
     slice_head()
 
 # For ordering species, colors, drug labels and levels
@@ -162,15 +165,15 @@ ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_MIC_summary.png"),
        units = "in")
 
 
-smg <- ggplot(mic_info, aes(x=genus_species, y=smg, fill = genus_species)) + 
-    geom_violin() +
-    geom_point(data = filter(mic_info, genus_species=="C. nivariensis")) +
+smg <- ggplot(mic_info, aes(x=genus_species, y=smg, color = genus_species)) + 
+    geom_beeswarm(size=2, cex=0.8) +#geom_violin() +
+    #geom_point(data = filter(mic_info, genus_species=="C. nivariensis")) +
     facet_grid(factor(drug, 
                       levels=c("fluconazole", "micafungin", "amphotericin B")) ~ ., 
                labeller = drugs,
                switch = "y") +
     theme_bw() +
-    scale_fill_manual(values=species_colors, guide = "none") +
+    scale_color_manual(values=species_colors, guide = "none") +
     theme(axis.text.x = element_text(angle = 30, 
                                      face="italic", 
                                      hjust = 1, 

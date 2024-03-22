@@ -173,9 +173,12 @@ possible_drivers <- gene_vars %>%
 ################################################################################
 # How does low OD in no-drug control relate to resistance status?
 
-od_sums <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
-    summarise(low_ods = sum(mean_static_od_24h < 0.31, na.rm = TRUE), 
-              high_ods = sum(mean_static_od_24h > 0.3, na.rm = TRUE))
+od-eucast_summary <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
+    summarise(OD_below_0.3 = sum(mean_static_od_24h < 0.31, na.rm = TRUE), 
+              OD_above_0.3 = sum(mean_static_od_24h > 0.3, na.rm = TRUE),
+              OD_below_0.2 = sum(mean_static_od_24h < 0.21, na.rm = TRUE),
+              OD_above_0.2 = sum(mean_static_od_24h > 0.2, na.rm = TRUE))
+
 
 flc_only <- mic_info %>% filter(drug=="fluconazole") 
 flc_only$mic50 <- fct_drop(flc_only$mic50)
