@@ -70,11 +70,12 @@ mic_info <- import_report(mic_results) %>%
               by=join_by(primary_id))
 
 # Subset to RPMI data with valid control results
-# Slice head removes repeated assays (for now, filtering isn't working)
+# Slice head removes repeated assays, assuming most recent is best (for now, filtering isn't working)
 mic_info <- mic_info %>% 
     filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
     inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
     group_by(primary_id, drug) %>% 
+    arrange(desc(mic_date)) %>% 
     slice_head()
 
 mic_info <- mic_info %>% left_join(od_vals, by=c("primary_id", "mic_date"="rpmi_date"))
@@ -123,7 +124,7 @@ resistance_freqs <- mic_info %>%
     filter(res_percent !=0)
 
 # Differences within series
-change_in_series <- mic_info %>% 
+change_in_res_categories <- mic_info %>% 
     group_by(series_id, patient_code, drug) %>% 
     filter(!is.na(series_id)) %>% 
     filter(any(eucast_breakpoint=="R")) %>% 
@@ -132,6 +133,15 @@ change_in_series <- mic_info %>%
               int = sum(eucast_breakpoint=="I", na.rm = TRUE),
               sens = sum(eucast_breakpoint=="S", na.rm = TRUE)) %>% 
     filter(!(sens==0 & int==0))
+
+changes_in_mics <- mic_info %>% 
+    filter(!is.na(series_id)) %>% 
+    group_by(genus_species, series_id, drug, mic50) %>% 
+    count()
+
+changed_series <- changes_in_mics %>% 
+    group_by(series_id) %>% 
+    filter(n() >3)
 
 patient_counts <- mic_info %>%
     group_by(drug, genus_species) %>%

@@ -14,8 +14,8 @@ library(jsonlite)
 ## ---------------------------
 
 # Functions
-source("scripts/MIC_calc_functions.R")
-source("scripts/MIC_heatmap.R")
+source("MIC_growth_curve/MIC_calc_functions.R")
+source("MIC_growth_curve/MIC_heatmap.R")
 
 # VARIABLES - READ THESE CAREFULLY!!!!!!!!!!!!!!!!!!!!!!
 # For automatic uploading to REDcap
@@ -23,12 +23,15 @@ api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Enter drug and spreadsheet data
-input_drug <- "amb"
+input_drug <- "flc"
 replicates <- 3
+
+mic_spreadsheet <-"data/MIC/2023-11-16_CZ_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "data/MIC/2023-11-17_CZ_SMG48_RPMI35.xlsx"
+
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
-mic_spreadsheet <-"data/MIC/2024-03-07_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2024-02-28_EW_SMG48_RPMI35.xlsx"
+metadata_range <- "A1:G13"
 
 # Type either "strain" or "concentration" for col names, depending on plate layout
 column_names <- "concentration"
@@ -37,10 +40,10 @@ column_names <- "concentration"
 cols_used <- 12
 
 # Drug concentrations (this assumes the usual "screening" set-up, CHANGE AS NEEDED)
-concentration <- case_when(toupper(input_drug) == "FLC" ~ c("blank",0,16,24,32,48,64,96,128,160,208,256),
-                           toupper(input_drug) %in% c("MCF","AMB") ~ c("blank",0,0.016,0.032,0.064,0.128,0.256,0.5,1,2,4,8))
+concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.025, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256),
+                           toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1,2,4,8, 16))
 
-max_concentration <- "8"
+max_concentration <- 256
 
 # Add control IDs
 control_strains <- c("AMS5123", "AMS5122")
@@ -58,7 +61,7 @@ mic_date <-str_extract(mic_spreadsheet, "\\d+-\\d+-\\d+")
 # Load metadata
 meta.frame <- read_excel(mic_spreadsheet, 
                          sheet = metadata_tab,
-                         range = "A1:F13")
+                         range = metadata_range)
 
 meta.frame$drug <- c(toupper(input_drug), rep(NA, times=cols_used - length(input_drug)))
 
@@ -70,8 +73,7 @@ meta_names = case_when(column_names=="strain" ~ "strain",
 meta_col = case_when(column_names!="strain" ~ "strain",
                      column_names !="concentration" ~ "concentration")
     
-cutoff <- case_when(meta.frame$drug[1] == "FLC" ~ 0.5,
-                    meta.frame$drug[1] == "MCF" ~ 0.5,
+cutoff <- case_when(meta.frame$drug[1] %in% c("FLC", "MCF") ~ 0.5,
                     meta.frame$drug[1] == "AMB" ~ 0.1)
 
 #x_axis_angle <- case_when(meta.frame$drug[1]== "FLC" ~ 0,
@@ -91,8 +93,9 @@ for(i in 1:replicates){
   colnames(d.frame) <- as.character(pull(meta.frame,column_names))
   
   # Add (strain or concentration) not used as column names as a new column
-  if(!all(meta.frame$strain[!is.na(meta.frame$strain)] %in% colnames(d.frame))) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
-  if(!all(meta.frame$concentration[!is.na(meta.frame$concentration)] %in% colnames(d.frame))) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
+  if(!all(meta.frame$strain[!is.na(meta.frame$strain)] %in% colnames(d.frame))) { 
+      d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]} else { 
+          d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
   
   # Add remaining metadata 
   d.frame <- d.frame %>%
@@ -114,9 +117,7 @@ drug <- pivot_longer(drug_data,
 # BLANKS: this checks for "blank" labeled wells in metadata
 # if none found, sets it to the highest concentration well of the control strain
 drug <- drug %>%
-    mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & drug == "FLC" & concentration == "32" & strain %in% control_strains) ~ "blank",
-                                     (!("blank" %in%  c(strain, concentration)) & drug == "MCF" & concentration == "1" & strain %in% control_strains) ~ "blank",
-                                     (!("blank" %in%  c(strain, concentration)) & drug == "AMB" & concentration == "1" & strain %in% control_strains) ~ "blank",
+    mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & concentration == as.character(max_concentration) & strain %in% control_strains) ~ "blank",
                                      .default = concentration))
 drug$concentration <-factor(tolower(drug$concentration), levels = mixedsort(unique(drug$concentration))) 
 
@@ -139,8 +140,9 @@ for(i in 1:replicates){
     colnames(d.frame) <- as.character(pull(meta.frame,column_names))
     
     # Add (strain or concentration) not used as column names as a new column
-    if(!all(colnames(d.frame) == meta.frame$strain)) { d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]}
-    if(!all(colnames(d.frame) == meta.frame$concentration)) { d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
+    if(!all(colnames(d.frame) == meta.frame$strain)) { 
+        d.frame$strain = meta.frame$strain[!is.na(meta.frame$strain)]} else {
+             d.frame$concentration = as.character(meta.frame$concentration[!is.na(meta.frame$concentration)])}
     
     # Add remaining metadata 
     d.frame <- d.frame %>%
@@ -161,9 +163,7 @@ drug48 <- pivot_longer(drug48_data,
 
 # This sets the blank when it's one well of the control strain
 drug48 <- drug48 %>%
-    mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & drug == "FLC" & concentration == "32" & strain %in% control_strains) ~ "blank",
-                                     (!("blank" %in%  c(strain, concentration)) & drug == "MCF" & concentration == "1" & strain %in% control_strains) ~ "blank",
-                                     (!("blank" %in%  c(strain, concentration)) & drug == "AMB" & concentration == "1" & strain %in% control_strains) ~ "blank",
+    mutate(concentration = case_when((!("blank" %in%  c(strain, concentration)) & concentration == as.character(max_concentration) & strain %in% control_strains) ~ "blank",
                                      .default = concentration))
 drug48$concentration <-factor(tolower(drug48$concentration), levels = mixedsort(unique(drug48$concentration))) 
 
@@ -219,6 +219,10 @@ ggsave(paste0("images/2023_MICs/",mic_date,"_MEC_",drug$drug[1],"_MIC.png"),
 ################################################################################
 # REDCap imports
 # Numeric values to text
+
+#### FILL IN QC RESULTS HERE #################
+redcap_qc <- "" # 1 for yes, 0 for no
+
 drug_mic$concentration <- as.character(drug_mic$concentration)
 
 # Append > when needed
@@ -242,8 +246,8 @@ redcap_drug_solvent <- case_when(drug$drug[1] == "FLC" ~ "EtOH",
                                  drug$drug[1] == "MCF" ~ "DMSO",
                                  drug$drug[1] == "AMB" ~ "DMSO")
 
-# For each strain, create new record and send form
-for(i in 1:length(drug_mic$strain)){
+# For each strain, create new record and send form1:length(drug_mic$strain)
+for(i in c(1,3:8)){
     primary_id=drug_mic$strain[i]
     
   record <- c(
@@ -258,6 +262,7 @@ for(i in 1:length(drug_mic$strain)){
     smg_file_name = basename(smg_spreadsheet),
     mic_media = 1,
     mic_temp = 1,
+    qc_ok = redcap_qc,
     drug_source = redcap_drug_man,
     lot_number = redcap_drug_lot,
     solvent = redcap_drug_solvent,
