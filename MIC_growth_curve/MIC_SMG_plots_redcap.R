@@ -26,12 +26,12 @@ api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 input_drug <- "flc"
 replicates <- 3
 
-mic_spreadsheet <-"data/MIC/2023-11-16_CZ_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "data/MIC/2023-11-17_CZ_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-""
+smg_spreadsheet <- ""
 
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
-metadata_range <- "A1:G13"
+metadata_range <- "A1:F13"
 
 # Type either "strain" or "concentration" for col names, depending on plate layout
 column_names <- "concentration"
@@ -40,10 +40,10 @@ column_names <- "concentration"
 cols_used <- 12
 
 # Drug concentrations (this assumes the usual "screening" set-up, CHANGE AS NEEDED)
-concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.025, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256),
-                           toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1,2,4,8, 16))
+concentration <- case_when(toupper(input_drug) == "FLC" ~ c(0,0.5,1,2,4,8,16,32),
+                           toupper(input_drug) %in% c("MCF","AMB") ~ c(0,0.016,0.032,0.064,0.125,0.256,0.5,1))
 
-max_concentration <- 256
+max_concentration <- 32
 
 # Add control IDs
 control_strains <- c("AMS5123", "AMS5122")
@@ -246,8 +246,8 @@ redcap_drug_solvent <- case_when(drug$drug[1] == "FLC" ~ "EtOH",
                                  drug$drug[1] == "MCF" ~ "DMSO",
                                  drug$drug[1] == "AMB" ~ "DMSO")
 
-# For each strain, create new record and send form1:length(drug_mic$strain)
-for(i in c(1,3:8)){
+# For each strain, create new record and send form
+for(i in c(1:length(drug_mic$strain))){
     primary_id=drug_mic$strain[i]
     
   record <- c(

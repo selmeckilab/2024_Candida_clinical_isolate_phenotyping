@@ -9,6 +9,7 @@ options(scipen = 999)
 library(tidyverse)
 library(readxl)
 library(patchwork)
+library(ggbeeswarm)
 
 # Redcap report IDs
 samples <- '58043'
@@ -178,7 +179,7 @@ smg <- ggplot(mic_info, aes(x=genus_species, y=smg, color = genus_species)) +
                                      face="italic", 
                                      hjust = 1, 
                                      vjust = 1)) +
-    xlab("Species") +
+    xlab(NULL) +
     ylab("SMG")
 
 ggsave(paste0("images/2023_MICs/",Sys.Date(),"_MEC_SMG_summary.png"),
