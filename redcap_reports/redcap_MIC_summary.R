@@ -158,6 +158,18 @@ patient_freq <- patient_counts %>%
     arrange(genus_species, drug)
 
 ################################################################################
+# Summary SMG data
+
+smg <- mic_info %>% 
+    group_by(genus_species, drug) %>% 
+    filter(!is.na(smg)) %>% 
+    summarise(number_smg = n(),
+              mean_smg = round(mean(smg), digits = 2), 
+              median_smg = round(median(smg), digits = 2),
+              min_smg = min(smg),
+              max_smg = max(smg))
+
+################################################################################
 # Candidate AMR gene SNPs
 # Variants found in sensitive isolates 
 
@@ -173,7 +185,7 @@ possible_drivers <- gene_vars %>%
 ################################################################################
 # How does low OD in no-drug control relate to resistance status?
 
-od-eucast_summary <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
+od_eucast_summary <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
     summarise(OD_below_0.3 = sum(mean_static_od_24h < 0.31, na.rm = TRUE), 
               OD_above_0.3 = sum(mean_static_od_24h > 0.3, na.rm = TRUE),
               OD_below_0.2 = sum(mean_static_od_24h < 0.21, na.rm = TRUE),

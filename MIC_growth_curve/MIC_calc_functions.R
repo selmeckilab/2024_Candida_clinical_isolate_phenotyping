@@ -21,9 +21,10 @@ calculate_od <- function(tidy_mic) {
   plate_blank <- tidy_mic %>%
     # control for spreadsheet layout (cols vs rows of samples)
     filter(concentration == "blank" | strain == "blank") %>%
+    filter(OD600 < 0.2) %>% # remove likely contaminated wells
     group_by(plate) %>%
-    summarize(mean_blank = case_when(mean(OD600) <0.2 ~ mean(OD600),
-                                               mean(OD600) >= 0.2 ~ 0.13))
+    summarise(mean_blank = mean(OD600))
+
 
   corrected_od <- tidy_mic %>%
     inner_join(plate_blank, by = "plate") %>%

@@ -35,7 +35,8 @@ mic_boxplot <- function(tidy_mic){
         geom_boxplot() +
         theme(axis.text.x = element_text(angle = 90)) +
         theme_bw() +
-        xlab("Drug concentration")
+        xlab(paste(drug$drug[1], "concentration"))+
+        ylab("OD")
 }
 
 plotting_coords <- function(final_od, mic_cut, mic_cutpoint, strain_order){
@@ -66,7 +67,7 @@ mic_plot <- function(final_od, strain_order, plotting_coords){
       ggplot(aes(y=strain, x=concentration, fill=mean_norm_OD)) +
       theme_minimal() +
       theme(panel.grid.major = element_blank(),
-          axis.text.x = element_text(family = "Helvetica", color = "black", size=11),
+          axis.text.x = element_text(family = "Helvetica", color = "black", size=10),
           axis.text.y = element_text(family = "Helvetica", color = "black", size=11, vjust = 0.4),
           legend.text = element_text(family = "Helvetica", color = "black"),
           plot.title = element_text(family = "Helvetica", color = "black", size=13)) +
@@ -96,14 +97,14 @@ smg_plot <- function(smg_subset, strain_order){
       theme( panel.grid.minor.y = element_blank(),
            panel.grid.minor.x = element_blank(),
            axis.text.y = element_text(family = "Helvetica", color = "black", size=11),
-           axis.text.x = element_text(family = "Helvetica", color = "black", size = 11),
+           axis.text.x = element_text(family = "Helvetica", color = "black", size = 10),
            axis.line.y = element_line(color = "black", size = 0.2),
            axis.line.x = element_line(color = "black", size =  0.3),
            plot.title = element_text(family = "Helvetica", color = "black", size=13)) +
       xlab(NULL) +
       ylab(NULL)+
       #expand_limits(y = 1.0) +
-      coord_fixed(ratio = 1.4) +
+      coord_fixed(ratio = 1.2) +
       scale_y_discrete(limits = strain_order) +
       scale_x_continuous(limits = c(0,1),
                          breaks = c(0, 0.25, 0.5, 0.75, 1.0), 
