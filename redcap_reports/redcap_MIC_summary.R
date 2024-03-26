@@ -72,7 +72,7 @@ mic_info <- import_report(mic_results) %>%
 # Subset to RPMI data with valid control results
 # Slice head removes repeated assays, assuming most recent is best (for now, filtering isn't working)
 mic_info <- mic_info %>% 
-    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123")), qc_ok=="Yes") %>% 
+    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123","AMS2401")), qc_ok=="Yes") %>% 
     inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
     group_by(primary_id, drug) %>% 
     arrange(desc(mic_date)) %>% 
