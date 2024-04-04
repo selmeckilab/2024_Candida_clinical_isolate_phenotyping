@@ -88,7 +88,8 @@ species_count <- sample_info %>%
 
 mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.125",
                                                   "0.256", "0.5", "1", ">1", "2", 
-                                                  "4", "8", "16", "32", ">32"))
+                                                  "4", "8", "16", "32", ">32", "64", 
+                                                  "96" ,"128","160", "256", ">256"))
 
 mic_info$genus_species <- factor(mic_info$genus_species, levels = species_count$genus_species)
 
