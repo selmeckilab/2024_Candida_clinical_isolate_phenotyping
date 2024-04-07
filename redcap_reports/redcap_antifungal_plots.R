@@ -14,8 +14,6 @@ library(ggbeeswarm)
 # Redcap report IDs
 samples <- '58043'
 mic_results <- '58044'
-growth_curves <- '58045'
-genes <- '58048'
 
 token <- ''
 
@@ -48,26 +46,30 @@ sample_info <- import_report(samples) %>%
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
 
-# SNP data
-gene_vars <- import_report(genes) %>%
-    filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gene, protein_change, alt_freq) %>%
-    left_join((sample_info %>% select(primary_id, genus_species))) %>% 
-    unite("gene_pos", gene:protein_change)
-
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg, qc_ok) %>% 
+    select(primary_id, 
+           redcap_repeat_instance, 
+           drug, 
+           mic_media,
+           mic_date, 
+           mic50, 
+           eucast_breakpoint, 
+           smg, 
+           mean_stationary_k,
+           sd_stationary_k,
+           qc_ok) %>% 
     left_join((sample_info %>% 
-                   select(primary_id, genus_species, series_id)), 
+                   select(primary_id, genus_species, series_id, patient_code)), 
               by=join_by(primary_id))
 
 # Subset to RPMI data with valid control results
 # Slice head removes repeated assays, assuming most recent is best (for now, filtering isn't working)
 mic_info <- mic_info %>% 
-    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123", "AMS2401")), qc_ok=="Yes") %>% 
-    inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
+    filter(mic_media %in% c("RPMI liquid", "RPMI agar, Etest"), 
+           !(primary_id %in% c("AMS5122","AMS5123","AMS2401")), 
+           qc_ok=="Yes") %>% 
     group_by(primary_id, drug) %>% 
     arrange(desc(mic_date)) %>% 
     slice_head()

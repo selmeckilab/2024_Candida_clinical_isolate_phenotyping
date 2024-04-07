@@ -20,7 +20,6 @@ samples <- '58043'
 mic_results <- '58044'
 growth_curves <- '58045'
 genes <- '58048'
-rpmi_od <- '64098'
 
 token <- ''
 
@@ -50,10 +49,6 @@ sample_info <- import_report(samples) %>%
 
 sample_info$genus_species <- str_replace(sample_info$genus_species, "Candida", "C.")
 
-# OD data
-od_vals <- import_report(rpmi_od) %>%
-    select(-c(starts_with('redcap_repeat'))) 
-
 # SNP data
 gene_vars <- import_report(genes) %>%
     filter(redcap_repeat_instrument != "NA") %>%
@@ -64,21 +59,30 @@ gene_vars <- import_report(genes) %>%
 # MIC and SMG results
 mic_info <- import_report(mic_results) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, drug, mic_media,mic_date, mic50, eucast_breakpoint, smg, qc_ok) %>% 
+    select(primary_id, 
+           redcap_repeat_instance, 
+           drug, 
+           mic_media,
+           mic_date, 
+           mic50, 
+           eucast_breakpoint, 
+           smg, 
+           mean_stationary_k,
+           sd_stationary_k,
+           qc_ok) %>% 
     left_join((sample_info %>% 
-                   select(primary_id, genus_species, series_id)), 
+                   select(primary_id, genus_species, series_id, patient_code)), 
               by=join_by(primary_id))
 
 # Subset to RPMI data with valid control results
 # Slice head removes repeated assays, assuming most recent is best (for now, filtering isn't working)
 mic_info <- mic_info %>% 
-    filter(mic_media=="RPMI", !(primary_id %in% c("AMS5122","AMS5123","AMS2401")), qc_ok=="Yes") %>% 
-    inner_join(sample_info %>% select(primary_id, patient_code)) %>% 
+    filter(mic_media %in% c("RPMI liquid", "RPMI agar, Etest"), 
+           !(primary_id %in% c("AMS5122","AMS5123","AMS2401")), 
+           qc_ok=="Yes") %>% 
     group_by(primary_id, drug) %>% 
     arrange(desc(mic_date)) %>% 
     slice_head()
-
-mic_info <- mic_info %>% left_join(od_vals, by=c("primary_id", "mic_date"="rpmi_date"))
 
 # For ordering species and drug levels
 species_count <- sample_info %>%
@@ -86,8 +90,8 @@ species_count <- sample_info %>%
     summarize(species_count=n()) %>%
     arrange(desc(species_count))
 
-mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.032", "0.064", "0.125",
-                                                  "0.256", "0.5", "1", ">1", "2", 
+mic_info$mic50 <- factor(mic_info$mic50, levels=c("0.016", "0.023", "0.032", "0.047", "0.064", "0.125",
+                                                  "0.256", "0.38", "0.5", "1", ">1", "2", 
                                                   "4", "8", "16", "32", ">32", "64", 
                                                   "96" ,"128","160", "256", ">256"))
 
@@ -135,14 +139,19 @@ change_in_res_categories <- mic_info %>%
               sens = sum(eucast_breakpoint=="S", na.rm = TRUE)) %>% 
     filter(!(sens==0 & int==0))
 
-changes_in_mics <- mic_info %>% 
+serial_mics <- mic_info %>% 
     filter(!is.na(series_id)) %>% 
-    group_by(genus_species, series_id, drug, mic50) %>% 
+    group_by(genus_species, series_id, drug, mic_media, mic50) %>% 
     count()
 
-changed_series <- changes_in_mics %>% 
-    group_by(series_id) %>% 
-    filter(n() >3)
+changed_series <- serial_mics %>% 
+    group_by(series_id, drug, mic_media) %>% 
+    filter(n() >1)
+
+changes_by_drug <- changed_series %>% 
+    group_by(series_id,drug) %>% 
+    count()
+
 
 patient_counts <- mic_info %>%
     group_by(drug, genus_species) %>%
@@ -187,29 +196,28 @@ possible_drivers <- gene_vars %>%
 # How does low OD in no-drug control relate to resistance status?
 
 od_eucast_summary <- mic_info %>% group_by(genus_species, drug, eucast_breakpoint) %>% 
-    summarise(OD_below_0.3 = sum(mean_static_od_24h < 0.31, na.rm = TRUE), 
-              OD_above_0.3 = sum(mean_static_od_24h > 0.3, na.rm = TRUE),
-              OD_below_0.2 = sum(mean_static_od_24h < 0.21, na.rm = TRUE),
-              OD_above_0.2 = sum(mean_static_od_24h > 0.2, na.rm = TRUE))
+    summarise(OD_below_0.3 = sum(mean_stationary_k < 0.31, na.rm = TRUE), 
+              OD_above_0.3 = sum(mean_stationary_k > 0.3, na.rm = TRUE),
+              OD_below_0.2 = sum(mean_stationary_k < 0.21, na.rm = TRUE),
+              OD_above_0.2 = sum(mean_stationary_k > 0.2, na.rm = TRUE))
 
 
 flc_only <- mic_info %>% filter(drug=="fluconazole") 
 flc_only$mic50 <- fct_drop(flc_only$mic50)
 flc_only$eucast_breakpoint <- factor(flc_only$eucast_breakpoint, levels=c("S", "I", "R"))
 
-flc_cor <- cor.test(x=as.numeric(flc_only$mic50), y = flc_only$mean_static_od_24h, method = 'spearman')
-flc_eucast_cor <- cor.test(x=as.numeric(flc_only$eucast_breakpoint), y = flc_only$mean_static_od_24h, method = 'spearman')
+flc_cor <- cor.test(x=as.numeric(flc_only$mic50), y = flc_only$mean_stationary_k, method = 'spearman')
+flc_eucast_cor <- cor.test(x=as.numeric(flc_only$eucast_breakpoint), y = flc_only$mean_stationary_k, method = 'spearman')
     
 mcf_only <- mic_info %>% filter(drug=="micafungin")
 mcf_only$mic50 <- fct_drop(mcf_only$mic50)
 mcf_only$eucast_breakpoint <- factor(mcf_only$eucast_breakpoint, levels=c("S", "R", "IE (insufficient evidence"))
 
-mcf_cor <- cor.test(x=as.numeric(mcf_only$mic50), y = mcf_only$mean_static_od_24h, method = 'spearman')
-mcf_eucast_cor <- cor.test(x=as.numeric(mcf_only$eucast_breakpoint), y = mcf_only$mean_static_od_24h, method = 'spearman')
+mcf_cor <- cor.test(x=as.numeric(mcf_only$mic50), y = mcf_only$mean_stationary_k, method = 'spearman')
+mcf_eucast_cor <- cor.test(x=as.numeric(mcf_only$eucast_breakpoint), y = mcf_only$mean_stationary_k, method = 'spearman')
 
 amb_only <- mic_info %>% filter(drug=="amphotericin B")
 amb_only$mic50 <- fct_drop(amb_only$mic50)
 amb_only$eucast_breakpoint <- factor(amb_only$eucast_breakpoint, levels=c("S", "R", "IE (insufficient evidence"))
 
-amb_cor <- cor.test(x=as.numeric(amb_only$mic50), y = amb_only$mean_static_od_24h, method = 'spearman')
-amb_eucast_cor <- cor.test(x=as.numeric(amb_only$eucast_breakpoint), y = amb_only$mean_static_od_24h, method = 'spearman')
+amb_cor <- cor.test(x=as.numeric(amb_only$mic50), y = amb_only$mean_stationary_k, method = 'spearman')
