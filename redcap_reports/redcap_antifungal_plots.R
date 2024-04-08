@@ -15,15 +15,13 @@ library(ggbeeswarm)
 samples <- '58043'
 mic_results <- '58044'
 
-token <- ''
-
 species_colors <- c("#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
                     "#882255","#BBBBBB", "#AA4499", "#DDCC77", "black")
 
 # Function to import report from redcap
 import_report <- function(report_number) {
   url <- "https://redcap.ahc.umn.edu/redcap/api/"
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    content='report',
                    format='csv',
                    report_id=report_number,

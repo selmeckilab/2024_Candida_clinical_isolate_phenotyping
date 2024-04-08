@@ -10,13 +10,12 @@ samples <- '58043'
 genes <- '58048'
 
 # API
-token <- ""
 api_url <- "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Function to import report from redcap
 import_report <- function(report_number) {
     url <- api_url 
-    formData <- list("token"=token,
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='report',
                      format='csv',
                      report_id=report_number,
@@ -48,7 +47,7 @@ glab_problem_variants <- gene_vars %>%
 
 for(i in 2:length(glab_problem_variants$primary_id)){
   # remove repeat instances
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    action='delete',
                    content='record',
                    'records[0]'= glab_problem_variants$primary_id[i],

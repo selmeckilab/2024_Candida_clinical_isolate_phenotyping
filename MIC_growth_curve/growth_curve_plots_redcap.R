@@ -20,7 +20,6 @@ plate_reader_sn <- ""
 gc_date <- str_extract(plate_reader_file, "\\d+-\\d+-\\d+")
 facet_colors <- c(paletteer_d("ggthemes::Tableau_20"), paletteer_d("ggsci::category20c_d3"))
 
-api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 ## Read in plate, get sample metadata and check fit of logistic curve
@@ -146,7 +145,7 @@ for(i in 1:length(plate_summary$primary_id)){
     
     result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
     
-    formData <- list("token"=api_token,
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='record',
                      action='import',
                      format='json',

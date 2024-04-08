@@ -20,7 +20,6 @@ amr_genes <- read_csv("redcap_gene_ids.csv")
 ref <- "CBS138_s05m03r02"
 
 # API info
-api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Redcap report IDs
@@ -29,8 +28,8 @@ gene_report <- '58048'
 
 # Function to import report from redcap
 import_report <- function(report_number) {
-    url <- "https://redcap.ahc.umn.edu/redcap/api/"
-    formData <- list("token"=api_token,
+    url <- api_url
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='report',
                      format='csv',
                      report_id=report_number,
@@ -111,7 +110,7 @@ for(j in 1:length(samples)){
     
     result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
     
-    formData <- list("token"=api_token,
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='record',
                      action='import',
                      format='json',

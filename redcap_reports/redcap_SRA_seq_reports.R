@@ -12,13 +12,10 @@ samples <- '58043'
 avail_seq_data <- '58050'
 sra_data <- '63448'
 
-token <- ''
-
-
 # Function to import report from redcap
 import_report <- function(report_number) {
   url <- "https://redcap.ahc.umn.edu/redcap/api/"
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    content='report',
                    format='csv',
                    report_id=report_number,

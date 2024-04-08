@@ -12,8 +12,6 @@ samples <- '58043'
 calb_mlst <- '58053'
 cglab_mlst <- '58052'
 
-token <- ''
-
 patient_colors <- c(paletteer_d("ggsci::default_igv"),
                     "#838b8b",
                     "black",
@@ -23,7 +21,7 @@ patient_colors <- c(paletteer_d("ggsci::default_igv"),
 # Function to import report from redcap
 import_report <- function(report_number) {
   url <- "https://redcap.ahc.umn.edu/redcap/api/"
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    content='report',
                    format='csv',
                    report_id=report_number,

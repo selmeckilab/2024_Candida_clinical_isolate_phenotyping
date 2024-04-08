@@ -13,7 +13,6 @@ library(jsonlite)
 samples <- '58043'
 mic_results <- '58044'
 
-token <- "" 
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Add max concentration from MIC plates (below is standard MEC screening set-up)
@@ -25,7 +24,7 @@ max_mcf <- 1.00
 # Function to import report from redcap
 import_report <- function(report_number) {
   url <- api_url
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    content='report',
                    format='csv',
                    report_id=report_number,
@@ -103,7 +102,7 @@ for(i in 1:length(eucast_mic$primary_id)){
     
     result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
     
-    formData <- list("token"=token,
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='record',
                      action='import',
                      format='json',

@@ -18,8 +18,7 @@ source("MIC_growth_curve/MIC_calc_functions.R")
 source("MIC_growth_curve/MIC_heatmap.R")
 
 # VARIABLES - READ THESE CAREFULLY!!!!!!!!!!!!!!!!!!!!!!
-# For automatic uploading to REDcap
-api_token <- ""
+# For uploading to REDcap
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 
 # Enter drug and spreadsheet data
@@ -271,7 +270,7 @@ for(i in c(1:length(drug_mic$strain))){
 
   result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
 
-  formData <- list("token"=api_token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                  content='record',
                  action='import',
                  format='json',

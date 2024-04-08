@@ -9,16 +9,13 @@ options(scipen = 999)
 library(readxl)
 library(jsonlite)
 
-# API variables
-api_token <- ""
 api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
-
 mic_files <- '64707'
 
 # Functions
 import_report <- function(report_number) {
-    url <- "https://redcap.ahc.umn.edu/redcap/api/"
-    formData <- list("token"=api_token,
+    url <- api_url
+    formData <- list("token"=Sys.getenv("redcap_api_key"),
                      content='report',
                      format='csv',
                      report_id=report_number,
@@ -156,7 +153,7 @@ for(k in 3:length(smg_files)){
           sd_stationary_k_48 = as.character(control_wells$sd_OD[l])
       )
       result_data <- toJSON(list(as.list(record)), auto_unbox=TRUE)
-      formData <- list("token"=api_token,
+      formData <- list("token"=Sys.getenv("redcap_api_key"),
                        content='record',
                        action='import',
                        format='json',

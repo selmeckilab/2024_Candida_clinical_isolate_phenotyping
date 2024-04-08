@@ -21,12 +21,10 @@ mic_results <- '58044'
 growth_curves <- '58045'
 genes <- '58048'
 
-token <- ''
-
 # Function to import report from redcap
 import_report <- function(report_number) {
   url <- "https://redcap.ahc.umn.edu/redcap/api/"
-  formData <- list("token"=token,
+  formData <- list("token"=Sys.getenv("redcap_api_key"),
                    content='report',
                    format='csv',
                    report_id=report_number,
