@@ -74,7 +74,6 @@ mic <- function(final_od, mic_cutpoint){
 smg_input <- function(final_od, mic_cutpoint){
     mic_for_48 <- final_od %>%
       slice(which(mean_norm_OD <= mic_cutpoint)) %>%
-      slice_head(n = -1) %>%
       select(strain, concentration)
     mic_for_48
 }
