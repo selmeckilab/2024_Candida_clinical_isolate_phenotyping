@@ -37,9 +37,9 @@ sample_info <- import_report(samples) %>%
 # CHEF gel results
 chef_done <- import_report(chef_data) %>%
     filter(redcap_repeat_instrument != "NA") %>%
-    select(primary_id, redcap_repeat_instance, gel_date, blot_prepared) %>%
+    select(primary_id, redcap_repeat_instance, gel_date, chef_file_name, chef_lane, blot_prepared) %>%
     pivot_wider(names_from = "redcap_repeat_instance",
-                values_from = c("gel_date", "blot_prepared"),
+                values_from = c("gel_date", "blot_prepared", "chef_file_name", "chef_lane"),
                 names_vary = "slowest")
 
 # No CHEF results yet
