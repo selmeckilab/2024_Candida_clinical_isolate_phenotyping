@@ -6,7 +6,6 @@
 ## Load packages
 library(tidyverse)
 library(writexl)
-library(paletteer)
 
 # Redcap report IDs
 samples <- '58043'
