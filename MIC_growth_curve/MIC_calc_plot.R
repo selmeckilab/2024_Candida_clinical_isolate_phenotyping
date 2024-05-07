@@ -10,17 +10,16 @@ library(writexl)
 library(tidyverse)
 library(gtools)
 library(patchwork)
-library(jsonlite)
 
 # Enter drug and spreadsheet data
 drug_used <- "flc"
-mic_breakpoint <- 0.1
+mic_breakpoint <- 0.5
 replicates <- 3
 
 save_dir <- ""
 
-mic_spreadsheet <-"~/umn/data/MIC/2024-03-07_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "~/umn/data/MIC/2024-03-08_EW_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"~/umn/data/MIC/2024-02-06_EW_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "~/umn/data/MIC/2024-02-07_EW_SMG48_RPMI35.xlsx"
 
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
@@ -58,7 +57,7 @@ for(a in 1:replicates){
                           names_to = NULL,
                           values_to = "OD600"))
   mic_plates <- mic_plates %>% 
-    rename( "{drug_used}_{a}_OD600" := "OD600")
+    rename( "{drug_used}_{a}_OD600" := "OD600") # this rename gives replicate info
 } 
 
 
@@ -69,6 +68,7 @@ mic_plates <- mic_plates %>%
 # Simplify column name
 names(mic_plates)[names(mic_plates)== paste0(drug_used, "_concentration")] <- "concentration"
 
+# Set drug concentration as factor, and specify the order
 mic_plates$concentration <- factor(mic_plates$concentration, levels = mixedsort(unique(mic_plates$concentration)))
 mic_plates <- mic_plates %>% 
   pivot_longer(-c(well,strain,concentration), names_to = "replicate", values_to = "OD")
@@ -89,15 +89,16 @@ mic_plates <- mic_plates %>%
 mic_plates <- mic_plates %>% 
   group_by(replicate, strain) %>% 
   mutate(relative_growth = round(corrected_OD/corrected_OD[concentration == "0" | concentration=="0.0"], digits = 3)) %>% 
-  droplevels() 
+  droplevels() # this drops the blank level of the concentration factor
 
+# Check for and correct negative relative growth
 mic_plates <- mic_plates %>% 
   mutate(relative_growth = ifelse(relative_growth < 0, 0, relative_growth))
 
 # Add factor for MIC value above plate max
 mic_plates$concentration <- fct_expand(mic_plates$concentration, paste0(">", levels(mic_plates$concentration)[length(levels(mic_plates$concentration))]))
 
-# Summarize
+# Summarize - average the replicates
 summary_vals <- mic_plates %>% 
   group_by(strain, concentration) %>% 
   summarise(mean_corrected_OD = round(mean(corrected_OD), digits = 3),
@@ -105,16 +106,16 @@ summary_vals <- mic_plates %>%
             mean_relative_growth = round(mean(relative_growth), digits = 3),
             sd_relative_growth = round(sd(relative_growth), digits = 3))
 
-# Filter for MIC values per strain,
+# Filter for MIC values per strain
 mic_vals <- summary_vals %>% 
   select(strain, concentration, mean_relative_growth, sd_relative_growth) %>% 
   filter(mean_relative_growth < mic_breakpoint) %>% 
   select(strain, concentration) %>% 
   group_by(strain) %>% 
   slice_head() %>% 
-  right_join(distinct(summary_vals, pick("strain")), by="strain") 
+  right_join(distinct(summary_vals, pick("strain")), by="strain") # if any strains are > than max concentration, this adds the strain name back
 
-# Add back any strains removed due to MICs above plate max and assign the new MIC value
+# In case of strains above max concentration, assign the new MIC value that you created on line 99
 mic_vals <- mic_vals%>% 
   replace_na(list(concentration = levels(mic_vals$concentration)[length(levels(mic_vals$concentration))])) %>% 
   arrange(strain) %>% 
@@ -129,7 +130,7 @@ smg_wells <- summary_vals %>%
 ################################################################################
 # MIC heatmap
 mic_plot <- summary_vals %>% 
-  group_by(strain) %>% 
+  group_by(strain) %>% # Can add a step to filter out strains or set a different order here
   ggplot(aes(x = concentration, y=strain, fill = mean_relative_growth)) +
   geom_raster(hjust = 1.0) +
   theme_minimal() +theme(panel.grid.major = element_blank(),
@@ -171,7 +172,7 @@ for(a in 1:replicates){
                           names_to = NULL,
                           values_to = "OD600"))
   smg_plates <- smg_plates %>% 
-    rename( "{drug_used}_{a}_OD600" := "OD600")
+    rename( "{drug_used}_{a}_OD600" := "OD600") # rename to include plate number
 } 
 
 
@@ -245,7 +246,7 @@ smg_plot <- final_smg %>%
   xlab("SMG") +
   ylab(NULL)+
   #expand_limits(y = 1.0) +
-  coord_fixed(ratio = 0.9) + # smaller number means wider bar graph
+  coord_fixed(ratio = 0.8) + # ADJUST THE WIDTH HERE: smaller number means wider bar graph
   scale_x_continuous(limits = c(0,1),
                      breaks = c(0, 0.25, 0.5, 0.75, 1.0), 
                      labels=c("0", "", "0.5", "", "1"))
@@ -266,6 +267,8 @@ ggsave(paste0(save_dir,mic_date,"_MEC_",toupper(drug_used),"_MIC.png"),
 ################################################################################
 # Write out data to new spreadsheet with MIC date
 
+# Only need to make a list if you want to save multiple dataframes as tabs
+# I renamed these, which says something about my variable choices
 outfiles <- list(summary_24hr=summary_vals, 
                  mic = mic_vals, 
                  summary_48hr = smg_summary_vals,
