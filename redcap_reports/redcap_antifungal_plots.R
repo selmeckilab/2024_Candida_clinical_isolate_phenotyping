@@ -54,9 +54,9 @@ mic_info <- import_report(mic_results) %>%
            mic_date, 
            mic50, 
            eucast_breakpoint, 
-           smg, 
-           mean_stationary_k,
-           sd_stationary_k,
+           mean_smg, 
+           mean_no_drug_stationary_k,
+           sd_no_drug_stationary_k,
            qc_ok) %>% 
     left_join((sample_info %>% 
                    select(primary_id, genus_species, series_id, patient_code)), 
