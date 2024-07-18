@@ -18,8 +18,8 @@ replicates <- 3
 
 save_dir <- ""
 
-mic_spreadsheet <-"~/umn/data/MIC/2024-02-06_EW_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "~/umn/data/MIC/2024-02-07_EW_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"~/umn/data/MIC/2024-07-16_EW_Cglabrata_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "~/umn/data/MIC/2024-07-17_EW_Cglabrata_SMG48_RPMI35.xlsx"
 
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
@@ -87,6 +87,7 @@ mic_plates <- mic_plates %>%
 
 # Normalize by control well
 mic_plates <- mic_plates %>% 
+    filter(strain !="NA") %>% 
   group_by(replicate, strain) %>% 
   mutate(relative_growth = round(corrected_OD/corrected_OD[concentration == "0" | concentration=="0.0"], digits = 3)) %>% 
   droplevels() # this drops the blank level of the concentration factor
@@ -140,7 +141,7 @@ mic_plot <- summary_vals %>%
                          plot.title = element_text(family = "Helvetica", color = "black", size=13)) +
   guides(fill = guide_legend(title="Relative \ngrowth")) +
   ylab(NULL) +
-  xlab(paste(toupper(drug_used), "MIC")) +
+  xlab(paste(toupper(drug_used), "concentration")) +
   theme(plot.margin = unit(c(0,0.5,0.5,0.5), "cm"),
         axis.title.y = element_text(hjust = 0.5, margin = margin(0,10,0,0))) +
   annotate("segment",
@@ -201,6 +202,7 @@ smg_plates <- smg_plates %>%
 
 # Normalize by control well
 smg_plates <- smg_plates %>% 
+    filter(strain !="NA") %>% 
   group_by(replicate, strain) %>% 
   mutate(relative_growth = round(corrected_OD/corrected_OD[concentration == "0" | concentration=="0.0"], digits = 3)) %>% 
   droplevels() 
