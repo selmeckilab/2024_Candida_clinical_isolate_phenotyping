@@ -10,5 +10,7 @@
 *.xlsx
 *.png
 *.tiff
+*Rprofile
+renv
 data
 images

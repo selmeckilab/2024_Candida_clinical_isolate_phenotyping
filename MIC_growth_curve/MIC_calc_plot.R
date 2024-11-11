@@ -18,8 +18,8 @@ replicates <- 3
 
 save_dir <- ""
 
-mic_spreadsheet <-"~/umn/data/MIC/2024-07-16_EW_Cglabrata_MIC24_RPMI35.xlsx"
-smg_spreadsheet <- "~/umn/data/MIC/2024-07-17_EW_Cglabrata_SMG48_RPMI35.xlsx"
+mic_spreadsheet <-"~/umn/data/MIC/2024-07-18_EW_Cglabrata_MIC24_RPMI35.xlsx"
+smg_spreadsheet <- "~/umn/data/MIC/2024-07-19_EW_Cglabrata_SMG48_RPMI35.xlsx"
 
 od_tab <- 1  # Excel tab of OD values
 metadata_tab <- 2 # Excel tab of metadata
@@ -260,7 +260,7 @@ full_plot <- (mic_plot + smg_plot) + plot_layout(guides = 'collect')
 ggsave(paste0(save_dir,mic_date,"_MEC_",toupper(drug_used),"_MIC.png"), 
        full_plot, 
        width = 7.6, 
-       height = 8, 
+       height = 4.5, 
        units = "in", 
        device = png, 
        bg = "white",
