@@ -25,7 +25,7 @@ api_url <-  "https://redcap.ahc.umn.edu/redcap/api/"
 ## Read in plate, get sample metadata and check fit of logistic curve
 plate_od <- clean_growthcurver(plate_reader_file) %>%
     filter(time <= 24.1) # make sure all plates are same time span
-
+   
 sample_data <- samples(plate_reader_file)
 
 plate_data <- SummarizeGrowthByPlate(plate_od)
@@ -39,13 +39,20 @@ plate_summary <- plate_data %>%
     filter(!toupper(primary_id) %in% toupper(c("water", "blank", "NA", "ypad"))) %>%
     filter(!is.na(primary_id)) %>%
    # filter(str_detect(well, "F|G|H")) %>% # to filter for specific rows
-    summarize(mean_k = round(mean(k), digits = 3), 
+    summarize(mean_k = round(mean(k), digits = 3),
+              sem_k = round(stderror(k), digits = 3),
               mean_n0 = round(mean(n0), digits = 3),
+              sem_n0 = round(stderror(n0), digits = 3),
               mean_r = round(mean(r), digits = 3),
+              sem_r = round(stderror(r), digits = 3),
               mean_tmid = round(mean(t_mid), digits = 3),
+              sem_tmid = round(stderror(t_mid), digits = 3),
               mean_tgen = round(mean(t_gen), digits = 3),
-              mean_aucl = round(mean(auc_l), digits = 3), 
-              mean_auce = round(mean(auc_e), digits = 3))
+              sem_tgen = round(stderror(t_gen), digits = 3),
+              mean_auc_l = round(mean(auc_l), digits = 3), 
+              sem_auc_l = round(stderror(auc_l), digits = 3),
+              mean_auc_e = round(mean(auc_e), digits = 3),
+              sem_auc_e = round(stderror(auc_e), digits = 3))
 
 # Basic GC plot
 input_data <- growth_curve(plate_reader_file)
