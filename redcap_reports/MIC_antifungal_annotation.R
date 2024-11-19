@@ -5,7 +5,7 @@
 ## ---------------------------
 options(scipen = 999)
 
-source("ch2/redcap_MIC_summary.R")
+source("MIC_data_summary.R")
 # Local antifungal data
 af_spreadsheet <- "~/umn/data/metadata/MEC_all_isolates_antifungal_history.xlsx"
 
