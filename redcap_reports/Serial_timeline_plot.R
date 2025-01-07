@@ -4,7 +4,7 @@
 ## Email: zajac039@umn.edu
 ## ---------------------------
 
-source("manuscript_changes/MIC_data_summary.R")
+source("MIC_data_summary.R")
 
 species_colors <- c(
   "#88CCEE", "#999933", "#CC6677", "#44AA99", "#117733", "#332288",
